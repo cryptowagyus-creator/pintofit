@@ -96,6 +96,29 @@ export default function HomeScreen({ navigation }) {
           );
         })}
 
+        {/* Calorie Estimator */}
+        <TouchableOpacity
+          style={styles.calorieCard}
+          onPress={() => navigation.navigate('CalorieEstimator')}
+          activeOpacity={0.75}
+        >
+          <LinearGradient
+            colors={['#0a2a0a', colors.card]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.calorieGradient}
+          >
+            <View style={styles.calorieLeft}>
+              <Text style={styles.calorieEmoji}>🍽️</Text>
+              <View>
+                <Text style={styles.calorieTitle}>Calorie Estimator</Text>
+                <Text style={styles.calorieSub}>Snap a meal · Claude AI estimates calories</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color="#4caf50" />
+          </LinearGradient>
+        </TouchableOpacity>
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>Built for the Pinto Family 🏠</Text>
         </View>
@@ -178,6 +201,21 @@ const styles = StyleSheet.create({
   dayRight: { alignItems: 'center' },
   exCount: { fontSize: 30, fontWeight: '900' },
   exLabel: { fontSize: 11, color: colors.textSecondary },
+
+  calorieCard: { marginHorizontal: 16, marginBottom: 14, borderRadius: 18, overflow: 'hidden' },
+  calorieGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#4caf5044',
+    borderRadius: 18,
+  },
+  calorieLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  calorieEmoji: { fontSize: 32 },
+  calorieTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  calorieSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
 
   footer: { alignItems: 'center', paddingVertical: 30 },
   footerText: { color: colors.textMuted, fontSize: 13 },
