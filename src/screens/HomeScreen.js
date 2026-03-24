@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
-  logo: { width: 72, height: 72 },
+  logo: { width: 144, height: 144 },
 
   weekStrip: {
     flexDirection: 'row',
