@@ -19,9 +19,16 @@ const ANTHROPIC_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_KEY;
 export default function CalorieEstimatorScreen({ navigation }) {
   const [image, setImage] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
+  const [imageMimeType, setImageMimeType] = useState('image/jpeg');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const getMimeType = (uri) => {
+    const ext = uri?.split('?')[0].split('.').pop()?.toLowerCase();
+    const map = { png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+    return map[ext] || 'image/jpeg';
+  };
 
   const pickImage = async () => {
     setResult(null);
@@ -34,6 +41,7 @@ export default function CalorieEstimatorScreen({ navigation }) {
     if (!res.canceled && res.assets?.[0]) {
       setImage(res.assets[0].uri);
       setImageBase64(res.assets[0].base64);
+      setImageMimeType(getMimeType(res.assets[0].uri));
     }
   };
 
@@ -46,6 +54,7 @@ export default function CalorieEstimatorScreen({ navigation }) {
     if (!res.canceled && res.assets?.[0]) {
       setImage(res.assets[0].uri);
       setImageBase64(res.assets[0].base64);
+      setImageMimeType(getMimeType(res.assets[0].uri));
     }
   };
 
@@ -75,7 +84,7 @@ export default function CalorieEstimatorScreen({ navigation }) {
             content: [
               {
                 type: 'image',
-                source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 },
+                source: { type: 'base64', media_type: imageMimeType, data: imageBase64 },
               },
               {
                 type: 'text',
@@ -108,6 +117,7 @@ Be concise and direct. If it's not food, say so.`,
   const reset = () => {
     setImage(null);
     setImageBase64(null);
+    setImageMimeType('image/jpeg');
     setResult(null);
     setError(null);
   };
