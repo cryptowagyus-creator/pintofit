@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
 
   videoWrapper: {
     width: width,
-    height: width * (9 / 16),
+    height: 260,
     backgroundColor: '#000',
   },
   video: { width: '100%', height: '100%' },
