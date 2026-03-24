@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "PintoFit",
+    "slug": "pintofit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a0a0a"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jpinto.pintofit"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0a"
+      },
+      "package": "com.jpinto.pintofit"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
