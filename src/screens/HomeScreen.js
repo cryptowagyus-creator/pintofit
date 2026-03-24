@@ -7,6 +7,7 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,8 +61,13 @@ export default function HomeScreen() {
       >
         {/* Greeting */}
         <View style={styles.greetingBlock}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.greetingName}>Pintico</Text>
+          <View style={styles.greetingRow}>
+            <View>
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.greetingName}>Pintico</Text>
+            </View>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          </View>
         </View>
 
         {/* Week Strip */}
@@ -206,8 +212,10 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 120 },
 
   greetingBlock: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 20 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
+  logo: { width: 72, height: 72 },
 
   weekStrip: {
     flexDirection: 'row',
