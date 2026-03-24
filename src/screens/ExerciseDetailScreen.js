@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ const { width } = Dimensions.get('window');
 
 export default function ExerciseDetailScreen({ route, navigation }) {
   const { exercise, group, day } = route.params;
+  const videoRef = useRef(null);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -34,12 +35,18 @@ export default function ExerciseDetailScreen({ route, navigation }) {
         {exercise.video ? (
           <View style={styles.videoWrapper}>
             <Video
+              ref={videoRef}
               source={exercise.video}
               style={styles.video}
               resizeMode={ResizeMode.CONTAIN}
-              useNativeControls
+              useNativeControls={false}
               shouldPlay={false}
               isLooping={false}
+            />
+            <TouchableOpacity
+              style={styles.videoTap}
+              activeOpacity={1}
+              onPress={() => videoRef.current?.presentFullscreenPlayer()}
             />
           </View>
         ) : (
@@ -95,6 +102,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   video: { width: '100%', height: '100%' },
+  videoTap: { ...StyleSheet.absoluteFillObject },
 
   videoPlaceholder: {
     width: width,
