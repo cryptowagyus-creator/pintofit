@@ -75,7 +75,7 @@ export default function WorkoutDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingBottom: 48 },
+  content: { flexGrow: 1, paddingBottom: 48 },
 
   backBtn: {
     flexDirection: 'row',

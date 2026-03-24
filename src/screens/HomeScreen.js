@@ -109,7 +109,7 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingBottom: 48 },
+  content: { flexGrow: 1, paddingBottom: 48 },
 
   header: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 28 },
   appName: { fontSize: 34, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },

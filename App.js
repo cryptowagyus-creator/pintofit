@@ -14,33 +14,33 @@ const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-    <NavigationContainer
-      theme={{
-        dark: true,
-        colors: {
-          primary: colors.accent,
-          background: colors.background,
-          card: colors.surface,
-          text: colors.text,
-          border: colors.border,
-          notification: colors.accent,
-        },
-      }}
-    >
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          cardStyle: { backgroundColor: colors.background },
-          animationEnabled: true,
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <NavigationContainer
+        theme={{
+          dark: true,
+          colors: {
+            primary: colors.accent,
+            background: colors.bg,
+            card: colors.bg,
+            text: colors.text,
+            border: colors.border,
+            notification: colors.accent,
+          },
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
-        <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
-        <Stack.Screen name="CalorieEstimator" component={CalorieEstimatorScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            cardStyle: { backgroundColor: colors.bg },
+            animationEnabled: true,
+          }}
+        >
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
+          <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
+          <Stack.Screen name="CalorieEstimator" component={CalorieEstimatorScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
     </GestureHandlerRootView>
   );
 }

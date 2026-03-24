@@ -205,7 +205,7 @@ Be concise and direct. If it's not food, say so.`,
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingBottom: 48 },
+  content: { flexGrow: 1, paddingBottom: 48 },
 
   backBtn: {
     flexDirection: 'row',

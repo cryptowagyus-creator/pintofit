@@ -6,27 +6,35 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Modal,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function ExerciseDetailScreen({ route, navigation }) {
   const { exercise, group, day } = route.params;
-  const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = useRef(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const inlineRef = useRef(null);
+  const fullscreenRef = useRef(null);
 
-  const handlePlayPause = async () => {
-    if (!videoRef.current) return;
-    if (isPlaying) {
-      await videoRef.current.pauseAsync();
-    } else {
-      await videoRef.current.playAsync();
-    }
-    setIsPlaying(!isPlaying);
+  const openFullscreen = async () => {
+    // Pause inline first
+    if (inlineRef.current) await inlineRef.current.pauseAsync();
+    setFullscreen(true);
+    // Auto-play in fullscreen after modal opens
+    setTimeout(async () => {
+      if (fullscreenRef.current) await fullscreenRef.current.playAsync();
+    }, 300);
+  };
+
+  const closeFullscreen = async () => {
+    if (fullscreenRef.current) await fullscreenRef.current.pauseAsync();
+    setFullscreen(false);
   };
 
   return (
@@ -39,26 +47,29 @@ export default function ExerciseDetailScreen({ route, navigation }) {
           <Text style={styles.backText}>{day ? day.name : group.name}</Text>
         </TouchableOpacity>
 
-        {/* Video */}
+        {/* Inline Video */}
         {exercise.video ? (
-          <View style={styles.videoWrapper}>
+          <TouchableOpacity style={styles.videoWrapper} onPress={openFullscreen} activeOpacity={0.9}>
             <Video
-              ref={videoRef}
+              ref={inlineRef}
               source={exercise.video}
               style={styles.video}
-              resizeMode={ResizeMode.CONTAIN}
+              resizeMode={ResizeMode.COVER}
               shouldPlay={false}
               isLooping
-              onPlaybackStatusUpdate={(s) => s.isLoaded && setIsPlaying(s.isPlaying)}
+              isMuted
             />
-            <TouchableOpacity style={styles.playOverlay} onPress={handlePlayPause}>
-              {!isPlaying && (
-                <View style={styles.playBtn}>
-                  <Ionicons name="play" size={22} color="#fff" />
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
+            {/* Play / expand overlay */}
+            <View style={styles.videoOverlay}>
+              <View style={styles.playBtn}>
+                <Ionicons name="play" size={20} color="#fff" />
+              </View>
+              <View style={styles.expandHint}>
+                <Ionicons name="expand-outline" size={14} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.expandText}>Tap for fullscreen</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
         ) : (
           <View style={styles.videoPlaceholder}>
             <Ionicons name="videocam-off-outline" size={28} color={colors.textTertiary} />
@@ -71,13 +82,11 @@ export default function ExerciseDetailScreen({ route, navigation }) {
           <Text style={styles.groupLabel}>{group.name.toUpperCase()}</Text>
           <Text style={styles.title}>{exercise.name}</Text>
 
-          {/* Sets pill */}
           <View style={styles.setsPill}>
             <Ionicons name="repeat-outline" size={14} color={colors.accent} />
             <Text style={styles.setsText}>{exercise.sets}</Text>
           </View>
 
-          {/* Tip */}
           {exercise.tip && (
             <View style={styles.tipCard}>
               <Text style={styles.tipLabel}>TIP</Text>
@@ -85,12 +94,35 @@ export default function ExerciseDetailScreen({ route, navigation }) {
             </View>
           )}
 
-          {/* How To */}
           <Text style={styles.howLabel}>HOW TO DO IT</Text>
           <Text style={styles.explanation}>{exercise.explanation}</Text>
         </View>
 
       </ScrollView>
+
+      {/* Fullscreen Modal */}
+      <Modal
+        visible={fullscreen}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={closeFullscreen}
+      >
+        <View style={styles.fsContainer}>
+          <Video
+            ref={fullscreenRef}
+            source={exercise.video}
+            style={styles.fsVideo}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay
+            isLooping
+            useNativeControls={Platform.OS !== 'web'}
+          />
+          {/* Close button */}
+          <TouchableOpacity style={styles.fsClose} onPress={closeFullscreen}>
+            <Ionicons name="close" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -98,7 +130,7 @@ export default function ExerciseDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingBottom: 48 },
+  content: { flexGrow: 1, paddingBottom: 48 },
 
   backBtn: {
     flexDirection: 'row',
@@ -114,22 +146,33 @@ const styles = StyleSheet.create({
     width: width,
     height: width * 0.56,
     backgroundColor: '#000',
+    position: 'relative',
   },
   video: { width: '100%', height: '100%' },
-  playOverlay: {
+  videoOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   playBtn: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 3,
   },
+  expandHint: {
+    position: 'absolute',
+    bottom: 12,
+    right: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  expandText: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
 
   videoPlaceholder: {
     width: width,
@@ -142,20 +185,8 @@ const styles = StyleSheet.create({
   placeholderText: { color: colors.textTertiary, fontSize: 14 },
 
   info: { paddingHorizontal: 24, paddingTop: 28, gap: 16 },
-
-  groupLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.accent,
-    letterSpacing: 0.8,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text,
-    letterSpacing: -0.5,
-    marginTop: -4,
-  },
+  groupLabel: { fontSize: 12, fontWeight: '600', color: colors.accent, letterSpacing: 0.8 },
+  title: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: -4 },
 
   setsPill: {
     flexDirection: 'row',
@@ -177,24 +208,34 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: colors.accent,
   },
-  tipLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.accent,
-    letterSpacing: 0.8,
-  },
+  tipLabel: { fontSize: 11, fontWeight: '600', color: colors.accent, letterSpacing: 0.8 },
   tipText: { fontSize: 15, color: colors.text, lineHeight: 22 },
 
-  howLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    letterSpacing: 0.5,
-    marginBottom: -4,
+  howLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, letterSpacing: 0.5, marginBottom: -4 },
+  explanation: { fontSize: 16, color: colors.textSecondary, lineHeight: 26 },
+
+  // Fullscreen modal
+  fsContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  explanation: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    lineHeight: 26,
+  fsVideo: {
+    width: height,   // rotated: use height as width for landscape feel on web
+    height: width,
+    maxWidth: '100%',
+    maxHeight: '100%',
+  },
+  fsClose: {
+    position: 'absolute',
+    top: 52,
+    right: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
