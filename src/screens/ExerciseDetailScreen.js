@@ -55,7 +55,7 @@ export default function ExerciseDetailScreen({ route, navigation }) {
               ref={inlineRef}
               source={exercise.video}
               style={styles.video}
-              resizeMode={ResizeMode.COVER}
+              resizeMode={ResizeMode.CONTAIN}
               shouldPlay={false}
               isLooping
               isMuted
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
 
   videoWrapper: {
     width: width,
-    height: width * 0.56,
+    height: width * (16 / 9),
     backgroundColor: '#000',
     position: 'relative',
   },
@@ -252,10 +252,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fsVideo: {
-    width: height,
-    height: width,
-    maxWidth: '100%',
-    maxHeight: '100%',
+    width: '100%',
+    height: '100%',
   },
   fsClose: {
     position: 'absolute',
