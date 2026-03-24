@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -27,45 +26,8 @@ export default function CalorieEstimatorScreen({ navigation }) {
   const pickImage = async () => {
     setResult(null);
     setError(null);
-
-    if (Platform.OS === 'web') {
-      // Web: use file input via ImagePicker
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        base64: true,
-        quality: 0.7,
-      });
-      if (!res.canceled && res.assets?.[0]) {
-        setImage(res.assets[0].uri);
-        setImageBase64(res.assets[0].base64);
-      }
-    } else {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        setError('Camera roll permission is required.');
-        return;
-      }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        base64: true,
-        quality: 0.7,
-      });
-      if (!res.canceled && res.assets?.[0]) {
-        setImage(res.assets[0].uri);
-        setImageBase64(res.assets[0].base64);
-      }
-    }
-  };
-
-  const takePhoto = async () => {
-    setResult(null);
-    setError(null);
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      setError('Camera permission is required.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       base64: true,
       quality: 0.7,
     });
@@ -75,17 +37,27 @@ export default function CalorieEstimatorScreen({ navigation }) {
     }
   };
 
+  const takePhoto = async () => {
+    setResult(null);
+    setError(null);
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) { setError('Camera permission required.'); return; }
+    const res = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 });
+    if (!res.canceled && res.assets?.[0]) {
+      setImage(res.assets[0].uri);
+      setImageBase64(res.assets[0].base64);
+    }
+  };
+
   const estimateCalories = async () => {
     if (!imageBase64) return;
     if (!ANTHROPIC_KEY) {
-      setError('API key not configured. Add EXPO_PUBLIC_ANTHROPIC_KEY in Railway environment variables.');
+      setError('API key not set. Add EXPO_PUBLIC_ANTHROPIC_KEY in Railway environment variables.');
       return;
     }
-
     setLoading(true);
     setError(null);
     setResult(null);
-
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -98,40 +70,32 @@ export default function CalorieEstimatorScreen({ navigation }) {
         body: JSON.stringify({
           model: 'claude-opus-4-6',
           max_tokens: 1024,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'image',
-                  source: {
-                    type: 'base64',
-                    media_type: 'image/jpeg',
-                    data: imageBase64,
-                  },
-                },
-                {
-                  type: 'text',
-                  text: `You are a nutrition expert. Analyze this food image and provide:
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 },
+              },
+              {
+                type: 'text',
+                text: `You are a nutrition expert. Analyze this food image and provide:
 
-1. **What you see** — identify all food items in the image
-2. **Estimated calories** — total calorie estimate with a reasonable range
-3. **Macros breakdown** — approximate protein, carbs, and fat in grams
-4. **Serving size note** — any assumptions made about portion size
+1. **What you see** — identify all food items
+2. **Estimated calories** — total with a range
+3. **Macros** — protein, carbs, fat in grams
+4. **Portion note** — assumptions about serving size
 
-Be practical and direct. If the image is unclear or not food, say so.`,
-                },
-              ],
-            },
-          ],
+Be concise and direct. If it's not food, say so.`,
+              },
+            ],
+          }],
         }),
       });
-
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err?.error?.message || `API error ${response.status}`);
+        throw new Error(err?.error?.message || `Error ${response.status}`);
       }
-
       const data = await response.json();
       setResult(data.content[0].text);
     } catch (e) {
@@ -150,210 +114,188 @@ Be practical and direct. If the image is unclear or not food, say so.`,
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* Back */}
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={18} color={colors.accent} />
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
 
         {/* Header */}
-        <LinearGradient colors={['#0a1a0a', '#0a0a0a']} style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerEmoji}>🍽️</Text>
-          <Text style={styles.headerTitle}>CALORIE<Text style={styles.headerAccent}> ESTIMATOR</Text></Text>
-          <Text style={styles.headerSub}>Snap a photo of your meal — Claude AI estimates the calories</Text>
-        </LinearGradient>
+        <View style={styles.header}>
+          <Text style={styles.title}>Calorie Estimator</Text>
+          <Text style={styles.sub}>Upload a photo of your meal for an AI-powered nutrition estimate.</Text>
+        </View>
 
-        <View style={styles.content}>
-
-          {/* Upload Buttons */}
-          {!image && (
-            <View style={styles.uploadArea}>
-              <View style={styles.uploadIcon}>
-                <Ionicons name="camera-outline" size={52} color={colors.textMuted} />
-              </View>
-              <Text style={styles.uploadTitle}>Add a food photo</Text>
-              <Text style={styles.uploadSub}>Claude will identify the food and estimate calories</Text>
-
-              <View style={styles.btnRow}>
-                <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
-                  <Ionicons name="images-outline" size={20} color="#4caf50" />
-                  <Text style={[styles.uploadBtnText, { color: '#4caf50' }]}>Gallery</Text>
+        {/* Upload Area */}
+        {!image ? (
+          <View style={styles.uploadCard}>
+            <Ionicons name="image-outline" size={36} color={colors.textTertiary} />
+            <Text style={styles.uploadTitle}>Select a photo</Text>
+            <Text style={styles.uploadSub}>Claude will identify the food and estimate macros</Text>
+            <View style={styles.uploadBtns}>
+              <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
+                <Ionicons name="images-outline" size={17} color={colors.accent} />
+                <Text style={[styles.uploadBtnText, { color: colors.accent }]}>Gallery</Text>
+              </TouchableOpacity>
+              {Platform.OS !== 'web' && (
+                <TouchableOpacity style={styles.uploadBtn} onPress={takePhoto}>
+                  <Ionicons name="camera-outline" size={17} color={colors.text} />
+                  <Text style={styles.uploadBtnText}>Camera</Text>
                 </TouchableOpacity>
-                {Platform.OS !== 'web' && (
-                  <TouchableOpacity style={styles.uploadBtn} onPress={takePhoto}>
-                    <Ionicons name="camera-outline" size={20} color="#2196f3" />
-                    <Text style={[styles.uploadBtnText, { color: '#2196f3' }]}>Camera</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              )}
             </View>
-          )}
-
-          {/* Image Preview */}
-          {image && (
+          </View>
+        ) : (
+          <>
             <View style={styles.previewWrapper}>
               <Image source={{ uri: image }} style={styles.preview} resizeMode="cover" />
               <TouchableOpacity style={styles.removeBtn} onPress={reset}>
-                <Ionicons name="close-circle" size={28} color={colors.accent} />
+                <Ionicons name="close-circle-outline" size={22} color={colors.textSecondary} />
+                <Text style={styles.removeBtnText}>Remove</Text>
               </TouchableOpacity>
             </View>
-          )}
 
-          {/* Analyze Button */}
-          {imageBase64 && !result && (
-            <TouchableOpacity
-              style={[styles.analyzeBtn, loading && styles.analyzeBtnDisabled]}
-              onPress={estimateCalories}
-              disabled={loading}
-            >
-              <LinearGradient
-                colors={loading ? ['#333', '#222'] : ['#4caf50', '#2e7d32']}
-                style={styles.analyzeGradient}
+            {!result && (
+              <TouchableOpacity
+                style={[styles.analyzeBtn, loading && { opacity: 0.5 }]}
+                onPress={estimateCalories}
+                disabled={loading}
               >
                 {loading ? (
-                  <>
-                    <ActivityIndicator color="#fff" size="small" />
-                    <Text style={styles.analyzeBtnText}>Analyzing with Claude...</Text>
-                  </>
+                  <ActivityIndicator color="#000" size="small" />
                 ) : (
-                  <>
-                    <Ionicons name="sparkles-outline" size={20} color="#fff" />
-                    <Text style={styles.analyzeBtnText}>Estimate Calories</Text>
-                  </>
+                  <Ionicons name="sparkles-outline" size={16} color="#000" />
                 )}
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
+                <Text style={styles.analyzeBtnText}>
+                  {loading ? 'Analyzing…' : 'Estimate Calories'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
 
-          {/* Error */}
-          {error && (
-            <View style={styles.errorCard}>
-              <Ionicons name="alert-circle-outline" size={20} color={colors.accent} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
+        {/* Error */}
+        {error && (
+          <View style={styles.errorCard}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.red} />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
-          {/* Result */}
-          {result && (
-            <View style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <Ionicons name="sparkles" size={18} color="#4caf50" />
-                <Text style={styles.resultTitle}>Claude's Analysis</Text>
-              </View>
-              <Text style={styles.resultText}>{result}</Text>
-              <TouchableOpacity style={styles.newPhotoBtn} onPress={reset}>
-                <Ionicons name="camera-outline" size={16} color={colors.textSecondary} />
-                <Text style={styles.newPhotoBtnText}>Analyze another meal</Text>
+        {/* Result */}
+        {result && (
+          <View style={styles.resultCard}>
+            <View style={styles.resultHeader}>
+              <Text style={styles.resultLabel}>ANALYSIS</Text>
+              <TouchableOpacity onPress={reset}>
+                <Text style={styles.newPhoto}>New photo</Text>
               </TouchableOpacity>
             </View>
-          )}
+            <Text style={styles.resultText}>{result}</Text>
+          </View>
+        )}
 
-        </View>
-        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingBottom: 48 },
 
-  header: { paddingTop: 20, paddingBottom: 28, paddingHorizontal: 24, alignItems: 'center' },
   backBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    padding: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 2,
   },
-  headerEmoji: { fontSize: 44, marginBottom: 8 },
-  headerTitle: { fontSize: 26, fontWeight: '900', color: colors.text, letterSpacing: 2 },
-  headerAccent: { color: '#4caf50' },
-  headerSub: { fontSize: 14, color: colors.textSecondary, marginTop: 6, textAlign: 'center' },
+  backText: { fontSize: 17, color: colors.accent },
 
-  content: { paddingHorizontal: 16, paddingTop: 16, gap: 16 },
+  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 28 },
+  title: { fontSize: 34, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  sub: { fontSize: 15, color: colors.textSecondary, marginTop: 6, lineHeight: 22 },
 
-  uploadArea: {
+  uploadCard: {
+    marginHorizontal: 16,
     backgroundColor: colors.card,
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 32,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    gap: 10,
+    gap: 8,
   },
-  uploadIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  uploadTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  uploadSub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
-  btnRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  uploadTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginTop: 8 },
+  uploadSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  uploadBtns: { flexDirection: 'row', gap: 10, marginTop: 16 },
   uploadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 6,
+    backgroundColor: colors.elevated,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
   },
-  uploadBtnText: { fontSize: 15, fontWeight: '700' },
+  uploadBtnText: { fontSize: 15, fontWeight: '500', color: colors.text },
 
-  previewWrapper: { position: 'relative', borderRadius: 18, overflow: 'hidden' },
-  preview: { width: '100%', height: 280, borderRadius: 18 },
-  removeBtn: { position: 'absolute', top: 10, right: 10 },
+  previewWrapper: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: colors.card,
+    marginBottom: 12,
+  },
+  preview: { width: '100%', height: 260 },
+  removeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  removeBtnText: { fontSize: 14, color: colors.textSecondary },
 
-  analyzeBtn: { borderRadius: 16, overflow: 'hidden' },
-  analyzeBtnDisabled: { opacity: 0.7 },
-  analyzeGradient: {
+  analyzeBtn: {
+    marginHorizontal: 16,
+    backgroundColor: colors.text,
+    borderRadius: 14,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 18,
+    gap: 8,
   },
-  analyzeBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  analyzeBtnText: { fontSize: 16, fontWeight: '600', color: '#000' },
 
   errorCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: colors.accent + '22',
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: 16,
-    borderWidth: 1,
-    borderColor: colors.accent + '55',
+    borderLeftWidth: 2,
+    borderLeftColor: colors.red,
   },
-  errorText: { flex: 1, color: colors.accent, fontSize: 14, lineHeight: 20 },
+  errorText: { flex: 1, color: colors.red, fontSize: 14, lineHeight: 20 },
 
   resultCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
     backgroundColor: colors.card,
-    borderRadius: 18,
+    borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: '#4caf5044',
     gap: 14,
   },
-  resultHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  resultTitle: { fontSize: 14, fontWeight: '800', color: '#4caf50', letterSpacing: 1 },
-  resultText: { color: colors.text, fontSize: 15, lineHeight: 24 },
-  newPhotoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'center',
-    marginTop: 4,
-  },
-  newPhotoBtnText: { color: colors.textSecondary, fontSize: 13 },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  resultLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, letterSpacing: 0.5 },
+  newPhoto: { fontSize: 14, color: colors.accent },
+  resultText: { fontSize: 15, color: colors.text, lineHeight: 24 },
 });

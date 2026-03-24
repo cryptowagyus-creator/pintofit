@@ -8,10 +8,15 @@ import {
   StatusBar,
   SafeAreaView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
+
+const dayMeta = {
+  chest_triceps: { label: 'Push', icon: 'arrow-up-outline' },
+  back_biceps:   { label: 'Pull', icon: 'arrow-down-outline' },
+  legs_shoulders:{ label: 'Legs', icon: 'walk-outline' },
+};
 
 export default function HomeScreen({ navigation }) {
   const totalExercises = workoutProgram.days.reduce(
@@ -21,106 +26,79 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Hero */}
-        <LinearGradient colors={['#1a0a0a', '#0a0a0a']} style={styles.hero}>
-          <Text style={styles.appName}>PINTO<Text style={styles.appNameAccent}>FIT</Text></Text>
-          <View style={styles.heroRow}>
-            <View style={styles.athleteBadge}>
-              <Text style={styles.athleteEmoji}>🏆</Text>
-              <View>
-                <Text style={styles.athleteLabel}>ATHLETE</Text>
-                <Text style={styles.athleteName}>{workoutProgram.athlete}</Text>
-              </View>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statNum}>{workoutProgram.days.length}</Text>
-              <Text style={styles.statLabel}>Days</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statNum}>{totalExercises}</Text>
-              <Text style={styles.statLabel}>Exercises</Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        {/* Section Title */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>WORKOUT SPLIT</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.appName}>PintoFit</Text>
+          <Text style={styles.appSub}>Pintico's Program</Text>
         </View>
 
-        {/* Day Cards */}
-        {workoutProgram.days.map((day) => {
-          const totalEx = day.groups.reduce((s, g) => s + g.exercises.length, 0);
-          return (
-            <TouchableOpacity
-              key={day.id}
-              style={styles.dayCard}
-              onPress={() => navigation.navigate('WorkoutDetail', { day })}
-              activeOpacity={0.75}
-            >
-              <LinearGradient
-                colors={[day.colors[0] + '44', day.colors[1] + '22', colors.card]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.dayGradient}
-              >
-                {/* Label pill */}
-                <View style={[styles.labelPill, { borderColor: day.colors[0] }]}>
-                  <Text style={[styles.labelText, { color: day.colors[0] }]}>{day.label}</Text>
-                </View>
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>{workoutProgram.days.length}</Text>
+            <Text style={styles.statLabel}>Training Days</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>{totalExercises}</Text>
+            <Text style={styles.statLabel}>Exercises</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>6</Text>
+            <Text style={styles.statLabel}>Muscle Groups</Text>
+          </View>
+        </View>
 
-                <View style={styles.dayMiddle}>
-                  <Text style={styles.dayEmoji}>{day.emoji}</Text>
-                  <Text style={styles.dayName}>{day.name}</Text>
-
-                  {/* Muscle chips */}
-                  <View style={styles.chips}>
-                    {day.groups.map((g) => (
-                      <View key={g.id} style={[styles.chip, { backgroundColor: g.color + '22', borderColor: g.color + '66' }]}>
-                        <Text style={[styles.chipText, { color: g.color }]}>{g.name}</Text>
-                      </View>
-                    ))}
+        {/* Workout Split */}
+        <Text style={styles.sectionLabel}>WORKOUT SPLIT</Text>
+        <View style={styles.listCard}>
+          {workoutProgram.days.map((day, idx) => {
+            const meta = dayMeta[day.id];
+            const totalEx = day.groups.reduce((s, g) => s + g.exercises.length, 0);
+            const isLast = idx === workoutProgram.days.length - 1;
+            return (
+              <View key={day.id}>
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => navigation.navigate('WorkoutDetail', { day })}
+                  activeOpacity={0.6}
+                >
+                  <View style={styles.rowIcon}>
+                    <Ionicons name={meta.icon} size={18} color={colors.accent} />
                   </View>
-                </View>
-
-                <View style={styles.dayRight}>
-                  <Text style={[styles.exCount, { color: day.colors[0] }]}>{totalEx}</Text>
-                  <Text style={styles.exLabel}>exercises</Text>
-                  <Ionicons name="chevron-forward" size={20} color={day.colors[0]} style={{ marginTop: 8 }} />
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Calorie Estimator */}
-        <TouchableOpacity
-          style={styles.calorieCard}
-          onPress={() => navigation.navigate('CalorieEstimator')}
-          activeOpacity={0.75}
-        >
-          <LinearGradient
-            colors={['#0a2a0a', colors.card]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.calorieGradient}
-          >
-            <View style={styles.calorieLeft}>
-              <Text style={styles.calorieEmoji}>🍽️</Text>
-              <View>
-                <Text style={styles.calorieTitle}>Calorie Estimator</Text>
-                <Text style={styles.calorieSub}>Snap a meal · Claude AI estimates calories</Text>
+                  <View style={styles.rowContent}>
+                    <Text style={styles.rowTitle}>{day.name}</Text>
+                    <Text style={styles.rowSub}>{totalEx} exercises · {meta.label}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                </TouchableOpacity>
+                {!isLast && <View style={styles.rowSeparator} />}
               </View>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color="#4caf50" />
-          </LinearGradient>
-        </TouchableOpacity>
+            );
+          })}
+        </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Built for the Pinto Family 🏠</Text>
+        {/* Tools */}
+        <Text style={styles.sectionLabel}>TOOLS</Text>
+        <View style={styles.listCard}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => navigation.navigate('CalorieEstimator')}
+            activeOpacity={0.6}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: colors.green + '18' }]}>
+              <Ionicons name="scan-outline" size={18} color={colors.green} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={styles.rowTitle}>Calorie Estimator</Text>
+              <Text style={styles.rowSub}>AI-powered food analysis</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -129,94 +107,61 @@ export default function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingBottom: 48 },
 
-  hero: { paddingHorizontal: 20, paddingTop: 30, paddingBottom: 28 },
-  appName: { fontSize: 42, fontWeight: '900', color: colors.text, letterSpacing: 4, marginBottom: 20 },
-  appNameAccent: { color: colors.accent },
+  header: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 28 },
+  appName: { fontSize: 34, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  appSub: { fontSize: 15, color: colors.textSecondary, marginTop: 4 },
 
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  athleteBadge: {
-    flex: 1,
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    marginHorizontal: 16,
     backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.accent + '44',
-  },
-  athleteEmoji: { fontSize: 26 },
-  athleteLabel: { fontSize: 10, color: colors.textMuted, letterSpacing: 2 },
-  athleteName: { fontSize: 20, fontWeight: '800', color: colors.text },
-  statBox: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 14,
-    alignItems: 'center',
-    minWidth: 60,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statNum: { fontSize: 24, fontWeight: '900', color: colors.accent },
-  statLabel: { fontSize: 10, color: colors.textSecondary, letterSpacing: 1 },
-
-  sectionHeader: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12 },
-  sectionTitle: { fontSize: 12, letterSpacing: 3, color: colors.textMuted, fontWeight: '700' },
-
-  dayCard: { marginHorizontal: 16, marginBottom: 14, borderRadius: 18, overflow: 'hidden' },
-  dayGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 18,
+    marginBottom: 32,
+  },
+  statItem: { flex: 1, alignItems: 'center', gap: 4 },
+  statNum: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: colors.textSecondary, textAlign: 'center' },
+  statDivider: { width: 1, backgroundColor: colors.separator, marginVertical: 4 },
+
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+    marginHorizontal: 24,
+    marginBottom: 8,
+  },
+
+  listCard: {
+    marginHorizontal: 16,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    marginBottom: 32,
+    overflow: 'hidden',
+  },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     gap: 14,
   },
-
-  labelPill: {
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-  },
-  labelText: { fontSize: 11, fontWeight: '800', letterSpacing: 1 },
-
-  dayMiddle: { flex: 1, gap: 6 },
-  dayEmoji: { fontSize: 28 },
-  dayName: { fontSize: 20, fontWeight: '900', color: colors.text },
-  chips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  chipText: { fontSize: 12, fontWeight: '700' },
-
-  dayRight: { alignItems: 'center' },
-  exCount: { fontSize: 30, fontWeight: '900' },
-  exLabel: { fontSize: 11, color: colors.textSecondary },
-
-  calorieCard: { marginHorizontal: 16, marginBottom: 14, borderRadius: 18, overflow: 'hidden' },
-  calorieGradient: {
-    flexDirection: 'row',
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.accent + '18',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#4caf5044',
-    borderRadius: 18,
+    justifyContent: 'center',
   },
-  calorieLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  calorieEmoji: { fontSize: 32 },
-  calorieTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
-  calorieSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-
-  footer: { alignItems: 'center', paddingVertical: 30 },
-  footerText: { color: colors.textMuted, fontSize: 13 },
+  rowContent: { flex: 1 },
+  rowTitle: { fontSize: 16, fontWeight: '500', color: colors.text },
+  rowSub: { fontSize: 13, color: colors.textSecondary, marginTop: 1 },
+  rowSeparator: { height: 1, backgroundColor: colors.separator, marginLeft: 66 },
 });
