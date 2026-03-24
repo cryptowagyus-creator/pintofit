@@ -23,10 +23,8 @@ export default function ExerciseDetailScreen({ route, navigation }) {
   const fullscreenRef = useRef(null);
 
   const openFullscreen = async () => {
-    // Pause inline first
     if (inlineRef.current) await inlineRef.current.pauseAsync();
     setFullscreen(true);
-    // Auto-play in fullscreen after modal opens
     setTimeout(async () => {
       if (fullscreenRef.current) await fullscreenRef.current.playAsync();
     }, 300);
@@ -39,11 +37,14 @@ export default function ExerciseDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Back */}
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={18} color={colors.accent} />
+          <Ionicons name="chevron-back" size={18} color={colors.blue} />
           <Text style={styles.backText}>{day ? day.name : group.name}</Text>
         </TouchableOpacity>
 
@@ -59,7 +60,6 @@ export default function ExerciseDetailScreen({ route, navigation }) {
               isLooping
               isMuted
             />
-            {/* Play / expand overlay */}
             <View style={styles.videoOverlay}>
               <View style={styles.playBtn}>
                 <Ionicons name="play" size={20} color="#fff" />
@@ -72,7 +72,7 @@ export default function ExerciseDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         ) : (
           <View style={styles.videoPlaceholder}>
-            <Ionicons name="videocam-off-outline" size={28} color={colors.textTertiary} />
+            <Ionicons name="videocam-off-outline" size={28} color={colors.textMuted} />
             <Text style={styles.placeholderText}>No video available</Text>
           </View>
         )}
@@ -97,7 +97,6 @@ export default function ExerciseDetailScreen({ route, navigation }) {
           <Text style={styles.howLabel}>HOW TO DO IT</Text>
           <Text style={styles.explanation}>{exercise.explanation}</Text>
         </View>
-
       </ScrollView>
 
       {/* Fullscreen Modal */}
@@ -117,7 +116,6 @@ export default function ExerciseDetailScreen({ route, navigation }) {
             isLooping
             useNativeControls={Platform.OS !== 'web'}
           />
-          {/* Close button */}
           <TouchableOpacity style={styles.fsClose} onPress={closeFullscreen}>
             <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
@@ -140,7 +138,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     gap: 2,
   },
-  backText: { fontSize: 17, color: colors.accent },
+  backText: { fontSize: 17, color: colors.blue },
 
   videoWrapper: {
     width: width,
@@ -182,11 +180,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  placeholderText: { color: colors.textTertiary, fontSize: 14 },
+  placeholderText: { color: colors.textMuted, fontSize: 14 },
 
   info: { paddingHorizontal: 24, paddingTop: 28, gap: 16 },
-  groupLabel: { fontSize: 12, fontWeight: '600', color: colors.accent, letterSpacing: 0.8 },
-  title: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: -4 },
+  groupLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.5,
+    marginTop: -4,
+  },
 
   setsPill: {
     flexDirection: 'row',
@@ -197,6 +206,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   setsText: { fontSize: 14, fontWeight: '500', color: colors.text },
 
@@ -205,13 +219,29 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     gap: 6,
-    borderLeftWidth: 2,
-    borderLeftColor: colors.accent,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.blue,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  tipLabel: { fontSize: 11, fontWeight: '600', color: colors.accent, letterSpacing: 0.8 },
+  tipLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.blue,
+    letterSpacing: 0.8,
+  },
   tipText: { fontSize: 15, color: colors.text, lineHeight: 22 },
 
-  howLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, letterSpacing: 0.5, marginBottom: -4 },
+  howLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+    marginBottom: -4,
+  },
   explanation: { fontSize: 16, color: colors.textSecondary, lineHeight: 26 },
 
   // Fullscreen modal
@@ -222,7 +252,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fsVideo: {
-    width: height,   // rotated: use height as width for landscape feel on web
+    width: height,
     height: width,
     maxWidth: '100%',
     maxHeight: '100%',

@@ -124,14 +124,11 @@ Be concise and direct. If it's not food, say so.`,
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Back */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={18} color={colors.accent} />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Calorie Estimator</Text>
@@ -141,16 +138,16 @@ Be concise and direct. If it's not food, say so.`,
         {/* Upload Area */}
         {!image ? (
           <View style={styles.uploadCard}>
-            <Ionicons name="image-outline" size={36} color={colors.textTertiary} />
+            <Ionicons name="image-outline" size={36} color={colors.textMuted} />
             <Text style={styles.uploadTitle}>Select a photo</Text>
             <Text style={styles.uploadSub}>Claude will identify the food and estimate macros</Text>
             <View style={styles.uploadBtns}>
               <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
-                <Ionicons name="images-outline" size={17} color={colors.accent} />
-                <Text style={[styles.uploadBtnText, { color: colors.accent }]}>Gallery</Text>
+                <Ionicons name="images-outline" size={17} color={colors.blue} />
+                <Text style={[styles.uploadBtnText, { color: colors.blue }]}>Gallery</Text>
               </TouchableOpacity>
               {Platform.OS !== 'web' && (
-                <TouchableOpacity style={styles.uploadBtn} onPress={takePhoto}>
+                <TouchableOpacity style={[styles.uploadBtn, styles.uploadBtnSecondary]} onPress={takePhoto}>
                   <Ionicons name="camera-outline" size={17} color={colors.text} />
                   <Text style={styles.uploadBtnText}>Camera</Text>
                 </TouchableOpacity>
@@ -174,9 +171,9 @@ Be concise and direct. If it's not food, say so.`,
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#000" size="small" />
+                  <ActivityIndicator color={colors.white} size="small" />
                 ) : (
-                  <Ionicons name="sparkles-outline" size={16} color="#000" />
+                  <Ionicons name="sparkles-outline" size={16} color={colors.white} />
                 )}
                 <Text style={styles.analyzeBtnText}>
                   {loading ? 'Analyzing…' : 'Estimate Calories'}
@@ -206,7 +203,6 @@ Be concise and direct. If it's not food, say so.`,
             <Text style={styles.resultText}>{result}</Text>
           </View>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -215,41 +211,49 @@ Be concise and direct. If it's not food, say so.`,
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { flexGrow: 1, paddingBottom: 48 },
+  content: { flexGrow: 1, paddingBottom: 120 },
 
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-    gap: 2,
+  header: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 28 },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.5,
   },
-  backText: { fontSize: 17, color: colors.accent },
-
-  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 28 },
-  title: { fontSize: 34, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
   sub: { fontSize: 15, color: colors.textSecondary, marginTop: 6, lineHeight: 22 },
 
   uploadCard: {
     marginHorizontal: 16,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 32,
     alignItems: 'center',
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   uploadTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginTop: 8 },
-  uploadSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  uploadSub: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   uploadBtns: { flexDirection: 'row', gap: 10, marginTop: 16 },
   uploadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.elevated,
+    backgroundColor: colors.bg,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 18,
+  },
+  uploadBtnSecondary: {
+    backgroundColor: colors.bg,
   },
   uploadBtnText: { fontSize: 15, fontWeight: '500', color: colors.text },
 
@@ -259,6 +263,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.card,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   preview: { width: '100%', height: 260 },
   removeBtn: {
@@ -280,7 +289,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  analyzeBtnText: { fontSize: 16, fontWeight: '600', color: '#000' },
+  analyzeBtnText: { fontSize: 16, fontWeight: '600', color: colors.white },
 
   errorCard: {
     flexDirection: 'row',
@@ -291,8 +300,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     padding: 16,
-    borderLeftWidth: 2,
+    borderLeftWidth: 3,
     borderLeftColor: colors.red,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
   errorText: { flex: 1, color: colors.red, fontSize: 14, lineHeight: 20 },
 
@@ -303,9 +317,23 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  resultLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, letterSpacing: 0.5 },
-  newPhoto: { fontSize: 14, color: colors.accent },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+  },
+  newPhoto: { fontSize: 14, color: colors.blue },
   resultText: { fontSize: 15, color: colors.text, lineHeight: 24 },
 });

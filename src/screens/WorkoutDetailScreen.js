@@ -12,23 +12,25 @@ import { colors } from '../theme/colors';
 
 export default function WorkoutDetailScreen({ route, navigation }) {
   const { day } = route.params;
+  const totalEx = day.groups.reduce((s, g) => s + g.exercises.length, 0);
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Back */}
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={18} color={colors.accent} />
+          <Ionicons name="chevron-back" size={18} color={colors.blue} />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
         {/* Title */}
         <View style={styles.header}>
           <Text style={styles.title}>{day.name}</Text>
-          <Text style={styles.sub}>
-            {day.groups.reduce((s, g) => s + g.exercises.length, 0)} exercises
-          </Text>
+          <Text style={styles.sub}>{totalEx} exercises</Text>
         </View>
 
         {/* Groups */}
@@ -42,7 +44,9 @@ export default function WorkoutDetailScreen({ route, navigation }) {
                   <View key={ex.id}>
                     <TouchableOpacity
                       style={styles.row}
-                      onPress={() => navigation.navigate('ExerciseDetail', { exercise: ex, group, day })}
+                      onPress={() =>
+                        navigation.navigate('ExerciseDetail', { exercise: ex, group, day })
+                      }
                       activeOpacity={0.6}
                     >
                       <View style={styles.indexBox}>
@@ -54,9 +58,14 @@ export default function WorkoutDetailScreen({ route, navigation }) {
                       </View>
                       <View style={styles.rowRight}>
                         {ex.video && (
-                          <Ionicons name="play-circle-outline" size={18} color={colors.accent} style={{ marginRight: 6 }} />
+                          <Ionicons
+                            name="play-circle-outline"
+                            size={18}
+                            color={colors.blue}
+                            style={{ marginRight: 6 }}
+                          />
                         )}
-                        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+                        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                       </View>
                     </TouchableOpacity>
                     {!isLast && <View style={styles.rowSeparator} />}
@@ -66,7 +75,6 @@ export default function WorkoutDetailScreen({ route, navigation }) {
             </View>
           </View>
         ))}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -85,10 +93,15 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     gap: 2,
   },
-  backText: { fontSize: 17, color: colors.accent },
+  backText: { fontSize: 17, color: colors.blue },
 
   header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 28 },
-  title: { fontSize: 34, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.5,
+  },
   sub: { fontSize: 15, color: colors.textSecondary, marginTop: 4 },
 
   section: { marginBottom: 28 },
@@ -106,6 +119,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 16,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   row: {
@@ -119,7 +137,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: colors.elevated,
+    backgroundColor: colors.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -128,5 +146,5 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 16, fontWeight: '500', color: colors.text },
   rowSub: { fontSize: 13, color: colors.textSecondary, marginTop: 1 },
   rowRight: { flexDirection: 'row', alignItems: 'center' },
-  rowSeparator: { height: 1, backgroundColor: colors.separator, marginLeft: 58 },
+  rowSeparator: { height: 1, backgroundColor: colors.border, marginLeft: 58 },
 });

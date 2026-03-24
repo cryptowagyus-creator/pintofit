@@ -5,163 +5,282 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  StatusBar,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 
-const dayMeta = {
-  chest_triceps: { label: 'Push', icon: 'arrow-up-outline' },
-  back_biceps:   { label: 'Pull', icon: 'arrow-down-outline' },
-  legs_shoulders:{ label: 'Legs', icon: 'walk-outline' },
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const cardMeta = {
+  chest_triceps: {
+    bg: colors.yellowCard,
+    tag: 'Push',
+    tagColor: '#B8860B',
+  },
+  back_biceps: {
+    bg: colors.blueCard,
+    tag: 'Pull',
+    tagColor: colors.blue,
+  },
+  legs_shoulders: {
+    bg: colors.lavenderCard,
+    tag: 'Legs',
+    tagColor: colors.lavender,
+  },
 };
 
-export default function HomeScreen({ navigation }) {
-  const totalExercises = workoutProgram.days.reduce(
-    (sum, day) => sum + day.groups.reduce((s, g) => s + g.exercises.length, 0),
-    0
-  );
+export default function HomeScreen() {
+  const navigation = useNavigation();
+  const todayIndex = new Date().getDay();
+
+  const days = workoutProgram.days;
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.appName}>PintoFit</Text>
-          <Text style={styles.appSub}>Pintico's Program</Text>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Greeting */}
+        <View style={styles.greetingBlock}>
+          <Text style={styles.greeting}>Good morning,</Text>
+          <Text style={styles.greetingName}>Pintico</Text>
         </View>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNum}>{workoutProgram.days.length}</Text>
-            <Text style={styles.statLabel}>Training Days</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNum}>{totalExercises}</Text>
-            <Text style={styles.statLabel}>Exercises</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNum}>6</Text>
-            <Text style={styles.statLabel}>Muscle Groups</Text>
-          </View>
-        </View>
-
-        {/* Workout Split */}
-        <Text style={styles.sectionLabel}>WORKOUT SPLIT</Text>
-        <View style={styles.listCard}>
-          {workoutProgram.days.map((day, idx) => {
-            const meta = dayMeta[day.id];
-            const totalEx = day.groups.reduce((s, g) => s + g.exercises.length, 0);
-            const isLast = idx === workoutProgram.days.length - 1;
+        {/* Week Day Strip */}
+        <View style={styles.weekStrip}>
+          {DAY_LABELS.map((label, i) => {
+            const isToday = i === todayIndex;
             return (
-              <View key={day.id}>
-                <TouchableOpacity
-                  style={styles.row}
-                  onPress={() => navigation.navigate('WorkoutDetail', { day })}
-                  activeOpacity={0.6}
-                >
-                  <View style={styles.rowIcon}>
-                    <Ionicons name={meta.icon} size={18} color={colors.accent} />
-                  </View>
-                  <View style={styles.rowContent}>
-                    <Text style={styles.rowTitle}>{day.name}</Text>
-                    <Text style={styles.rowSub}>{totalEx} exercises · {meta.label}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-                </TouchableOpacity>
-                {!isLast && <View style={styles.rowSeparator} />}
+              <View key={label} style={styles.dayItem}>
+                <View style={[styles.dayCircle, isToday && styles.dayCircleActive]}>
+                  <Text style={[styles.dayLabel, isToday && styles.dayLabelActive]}>
+                    {label}
+                  </Text>
+                </View>
               </View>
             );
           })}
         </View>
 
-        {/* Tools */}
-        <Text style={styles.sectionLabel}>TOOLS</Text>
-        <View style={styles.listCard}>
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => navigation.navigate('CalorieEstimator')}
-            activeOpacity={0.6}
-          >
-            <View style={[styles.rowIcon, { backgroundColor: colors.green + '18' }]}>
-              <Ionicons name="scan-outline" size={18} color={colors.green} />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={styles.rowTitle}>Calorie Estimator</Text>
-              <Text style={styles.rowSub}>AI-powered food analysis</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+        {/* Section Title */}
+        <Text style={styles.sectionTitle}>Your Plan</Text>
 
+        {/* Cards — first card full width tall, then two side by side */}
+        <View style={styles.cardsContainer}>
+          {/* First card — full width */}
+          {days[0] && (
+            <WorkoutCard
+              day={days[0]}
+              meta={cardMeta[days[0].id]}
+              tall
+              onPress={() => navigation.navigate('WorkoutDetail', { day: days[0] })}
+            />
+          )}
+
+          {/* Remaining two cards side by side */}
+          {(days[1] || days[2]) && (
+            <View style={styles.rowCards}>
+              {days[1] && (
+                <WorkoutCard
+                  day={days[1]}
+                  meta={cardMeta[days[1].id]}
+                  half
+                  onPress={() => navigation.navigate('WorkoutDetail', { day: days[1] })}
+                />
+              )}
+              {days[2] && (
+                <WorkoutCard
+                  day={days[2]}
+                  meta={cardMeta[days[2].id]}
+                  half
+                  onPress={() => navigation.navigate('WorkoutDetail', { day: days[2] })}
+                />
+              )}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function WorkoutCard({ day, meta, tall, half, onPress }) {
+  const totalEx = day.groups.reduce((s, g) => s + g.exercises.length, 0);
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      style={[
+        styles.card,
+        { backgroundColor: meta.bg },
+        tall && styles.cardTall,
+        half && styles.cardHalf,
+      ]}
+    >
+      {/* Label pill */}
+      <View style={[styles.dayLabelPill, { backgroundColor: 'rgba(255,255,255,0.5)' }]}>
+        <Text style={[styles.dayLabelPillText, { color: meta.tagColor }]}>{day.label}</Text>
+      </View>
+
+      <View style={styles.cardBottom}>
+        <Text style={styles.cardName} numberOfLines={2}>{day.name}</Text>
+
+        <View style={styles.cardMeta}>
+          {/* Tag */}
+          <View style={[styles.tagPill, { backgroundColor: 'rgba(255,255,255,0.55)' }]}>
+            <Text style={[styles.tagText, { color: meta.tagColor }]}>{meta.tag}</Text>
+          </View>
+          {/* Exercise count */}
+          <Text style={styles.exCount}>{totalEx} exercises</Text>
+        </View>
+      </View>
+
+      {/* Chevron */}
+      <View style={styles.chevronWrapper}>
+        <Ionicons name="chevron-forward" size={16} color="rgba(0,0,0,0.35)" />
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { flexGrow: 1, paddingBottom: 48 },
+  content: { paddingBottom: 120 },
 
-  header: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 28 },
-  appName: { fontSize: 34, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
-  appSub: { fontSize: 15, color: colors.textSecondary, marginTop: 4 },
-
-  statsRow: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 32,
+  greetingBlock: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 20,
   },
-  statItem: { flex: 1, alignItems: 'center', gap: 4 },
-  statNum: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: colors.textSecondary, textAlign: 'center' },
-  statDivider: { width: 1, backgroundColor: colors.separator, marginVertical: 4 },
-
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  greeting: {
+    fontSize: 16,
     color: colors.textSecondary,
-    letterSpacing: 0.5,
-    marginHorizontal: 24,
-    marginBottom: 8,
+    fontWeight: '400',
+  },
+  greetingName: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.5,
+    marginTop: 2,
   },
 
-  listCard: {
-    marginHorizontal: 16,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    marginBottom: 32,
-    overflow: 'hidden',
-  },
-
-  row: {
+  weekStrip: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 14,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 28,
   },
-  rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.accent + '18',
+  dayItem: { alignItems: 'center' },
+  dayCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowContent: { flex: 1 },
-  rowTitle: { fontSize: 16, fontWeight: '500', color: colors.text },
-  rowSub: { fontSize: 13, color: colors.textSecondary, marginTop: 1 },
-  rowSeparator: { height: 1, backgroundColor: colors.separator, marginLeft: 66 },
+  dayCircleActive: {
+    backgroundColor: colors.text,
+  },
+  dayLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  dayLabelActive: {
+    color: colors.white,
+    fontWeight: '700',
+  },
+
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+
+  cardsContainer: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  rowCards: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  card: {
+    borderRadius: 20,
+    padding: 18,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardTall: {
+    height: 220,
+    justifyContent: 'space-between',
+  },
+  cardHalf: {
+    flex: 1,
+    height: 160,
+    justifyContent: 'space-between',
+  },
+
+  dayLabelPill: {
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  dayLabelPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  cardBottom: {
+    gap: 10,
+  },
+  cardName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.3,
+    lineHeight: 24,
+  },
+  cardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tagPill: {
+    borderRadius: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 9,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  exCount: {
+    fontSize: 13,
+    color: 'rgba(0,0,0,0.5)',
+    fontWeight: '500',
+  },
+
+  chevronWrapper: {
+    position: 'absolute',
+    top: 18,
+    right: 18,
+  },
 });
