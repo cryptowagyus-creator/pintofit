@@ -45,9 +45,16 @@ export default function ExerciseDetailScreen({ route, navigation }) {
             />
             <TouchableOpacity
               style={styles.videoTap}
-              activeOpacity={1}
-              onPress={() => videoRef.current?.presentFullscreenPlayer()}
-            />
+              activeOpacity={0.7}
+              onPress={async () => {
+                await videoRef.current?.playAsync();
+                videoRef.current?.presentFullscreenPlayer();
+              }}
+            >
+              <View style={styles.playBtn}>
+                <Ionicons name="play" size={28} color="#fff" />
+              </View>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.videoPlaceholder}>
@@ -102,7 +109,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   video: { width: '100%', height: '100%' },
-  videoTap: { ...StyleSheet.absoluteFillObject },
+  videoTap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  playBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 4,
+  },
 
   videoPlaceholder: {
     width: width,
