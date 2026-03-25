@@ -28,6 +28,7 @@ export default function LoginScreen({ onLogin }) {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
       <View style={styles.container}>
+        <View style={styles.centerStack}>
         <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         <View style={styles.card}>
           <Text style={styles.title}>Family Login</Text>
@@ -51,6 +52,7 @@ export default function LoginScreen({ onLogin }) {
           </TouchableOpacity>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -61,14 +63,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: { width: 320, height: 120, marginBottom: 16 },
-  card: {
+  centerStack: {
     width: '100%',
     maxWidth: 420,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: { width: 360, height: 132, marginBottom: 18 },
+  card: {
+    width: '100%',
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,

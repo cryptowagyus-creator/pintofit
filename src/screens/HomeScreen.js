@@ -455,8 +455,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: 120 },
 
-  logoBlock: { alignItems: 'center', paddingTop: 10, paddingBottom: 0 },
-  logo: { width: 104, height: 104 },
+  logoBlock: { alignItems: 'center', paddingTop: 0, paddingBottom: 0, marginTop: -6 },
+  logo: { width: 240, height: 92 },
 
   greetingBlock: { paddingHorizontal: 24, paddingBottom: 18 },
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 16 },
