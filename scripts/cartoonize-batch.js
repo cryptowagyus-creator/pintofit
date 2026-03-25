@@ -1,10 +1,14 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const OpenAI = require('openai');
+const { toFile } = require('openai/uploads');
+const { Jimp, JimpMime, HorizontalAlign, VerticalAlign } = require('jimp');
 
 const SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 const DEFAULT_PROMPT =
   'Turn this image into a warm 2D animated storybook cartoon portrait. Keep the subject recognizable, including face, hairstyle, expression, pose, and clothing details. Use clean outlines, soft shading, appealing colors, and a polished family-film look. Avoid text, watermarks, extra fingers, extra limbs, distorted faces, and messy backgrounds.';
+const PREP_SIZE = 1024;
 
 function printHelp() {
   console.log(`
@@ -14,30 +18,41 @@ Usage:
 Options:
   --input,  -i   Folder with source images. Required.
   --output, -o   Folder for generated images. Default: <input>/cartoonized
-  --prompt, -p   Custom edit prompt.
-  --model        OpenAI image model. Default: gpt-image-1
-  --size         Output size. Default: 1024x1024
-  --quality      Output quality. Default: medium
-  --format       png, jpeg, or webp. Default: png
-  --fidelity     low or high source-image fidelity. Default: high
+  --prompt, -p   Custom prompt. Supports multi-word values.
+  --model        Edit model. Default: dall-e-2
+  --size         Edit output size. Default: 1024x1024
   --suffix       Filename suffix. Default: -cartoon
   --help,   -h   Show this help message.
 
 Environment:
   OPENAI_API_KEY must be set before running the script.
 
-Example:
-  npm run cartoonize:batch -- --input .\\photos --output .\\cartoons
+Notes:
+  The DALL-E 2 edit endpoint expects square PNG inputs under 4MB. This script preprocesses each image onto a white 1024x1024 PNG canvas before upload.
 `);
+}
+
+function readValue(argv, startIndex) {
+  const first = argv[startIndex + 1];
+  if (!first || first.startsWith('--')) {
+    throw new Error(`Missing value for ${argv[startIndex]}`);
+  }
+
+  const parts = [first];
+  let nextIndex = startIndex + 1;
+
+  while (argv[nextIndex + 1] && !argv[nextIndex + 1].startsWith('--')) {
+    parts.push(argv[nextIndex + 1]);
+    nextIndex += 1;
+  }
+
+  return { value: parts.join(' '), nextIndex };
 }
 
 function parseArgs(argv) {
   const options = {
-    model: 'gpt-image-1',
+    model: 'dall-e-2',
     size: '1024x1024',
-    quality: 'medium',
-    format: 'png',
-    fidelity: 'high',
     suffix: '-cartoon',
     prompt: DEFAULT_PROMPT,
   };
@@ -51,47 +66,44 @@ function parseArgs(argv) {
     }
 
     if (arg === '--input' || arg === '-i') {
-      options.input = argv[++i];
+      const { value, nextIndex } = readValue(argv, i);
+      options.input = value;
+      i = nextIndex;
       continue;
     }
 
     if (arg === '--output' || arg === '-o') {
-      options.output = argv[++i];
+      const { value, nextIndex } = readValue(argv, i);
+      options.output = value;
+      i = nextIndex;
       continue;
     }
 
     if (arg === '--prompt' || arg === '-p') {
-      options.prompt = argv[++i];
+      const { value, nextIndex } = readValue(argv, i);
+      options.prompt = value;
+      i = nextIndex;
       continue;
     }
 
     if (arg === '--model') {
-      options.model = argv[++i];
+      const { value, nextIndex } = readValue(argv, i);
+      options.model = value;
+      i = nextIndex;
       continue;
     }
 
     if (arg === '--size') {
-      options.size = argv[++i];
-      continue;
-    }
-
-    if (arg === '--quality') {
-      options.quality = argv[++i];
-      continue;
-    }
-
-    if (arg === '--format') {
-      options.format = argv[++i];
-      continue;
-    }
-
-    if (arg === '--fidelity') {
-      options.fidelity = argv[++i];
+      const { value, nextIndex } = readValue(argv, i);
+      options.size = value;
+      i = nextIndex;
       continue;
     }
 
     if (arg === '--suffix') {
-      options.suffix = argv[++i];
+      const { value, nextIndex } = readValue(argv, i);
+      options.suffix = value;
+      i = nextIndex;
       continue;
     }
 
@@ -112,9 +124,52 @@ function listSourceImages(inputDir) {
     .sort((a, b) => a.localeCompare(b));
 }
 
-function getOutputPath(outputDir, fileName, suffix, format) {
+function getOutputPath(outputDir, fileName, suffix) {
   const parsed = path.parse(fileName);
-  return path.join(outputDir, `${parsed.name}${suffix}.${format}`);
+  return path.join(outputDir, `${parsed.name}${suffix}.png`);
+}
+
+async function prepareSquarePng(inputPath, fileName) {
+  const image = await Jimp.read(inputPath);
+  const canvas = new Jimp({ width: PREP_SIZE, height: PREP_SIZE, color: 0xffffffff });
+
+  image.contain({
+    w: PREP_SIZE,
+    h: PREP_SIZE,
+    align: HorizontalAlign.CENTER | VerticalAlign.MIDDLE,
+    mode: Jimp.RESIZE_BILINEAR,
+  });
+
+  canvas.composite(image, 0, 0);
+
+  const tempPath = path.join(os.tmpdir(), `${path.parse(fileName).name}-${Date.now()}.png`);
+  const pngBuffer = await canvas.getBuffer(JimpMime.png);
+  fs.writeFileSync(tempPath, pngBuffer);
+  return tempPath;
+}
+
+async function generateEditedImage(client, preparedImagePath, options) {
+  const preparedBuffer = fs.readFileSync(preparedImagePath);
+  const preparedFile = await toFile(preparedBuffer, 'input.png', { type: 'image/png' });
+  const maskImage = new Jimp({ width: PREP_SIZE, height: PREP_SIZE, color: 0x00000000 });
+  const maskBuffer = await maskImage.getBuffer(JimpMime.png);
+  const maskFile = await toFile(maskBuffer, 'mask.png', { type: 'image/png' });
+
+  const response = await client.images.edit({
+    model: options.model,
+    image: preparedFile,
+    mask: maskFile,
+    prompt: options.prompt,
+    size: options.size,
+    response_format: 'b64_json',
+  });
+
+  const imageBase64 = response.data && response.data[0] && response.data[0].b64_json;
+  if (!imageBase64) {
+    throw new Error('No image data returned from OpenAI.');
+  }
+
+  return imageBase64;
 }
 
 async function run() {
@@ -141,7 +196,6 @@ async function run() {
   }
 
   const files = listSourceImages(inputDir);
-
   if (files.length === 0) {
     throw new Error(`No supported images found in ${inputDir}`);
   }
@@ -155,28 +209,20 @@ async function run() {
 
   for (const fileName of files) {
     const inputPath = path.join(inputDir, fileName);
-    const outputPath = getOutputPath(outputDir, fileName, options.suffix, options.format);
+    const outputPath = getOutputPath(outputDir, fileName, options.suffix);
+    let preparedImagePath;
 
-    console.log(`\nEditing ${fileName}...`);
-
-    const result = await client.images.edit({
-      model: options.model,
-      image: fs.createReadStream(inputPath),
-      prompt: options.prompt,
-      size: options.size,
-      quality: options.quality,
-      output_format: options.format,
-      input_fidelity: options.fidelity,
-    });
-
-    const imageBase64 = result.data && result.data[0] && result.data[0].b64_json;
-
-    if (!imageBase64) {
-      throw new Error(`No image data returned for ${fileName}`);
+    try {
+      console.log(`\nEditing ${fileName}...`);
+      preparedImagePath = await prepareSquarePng(inputPath, fileName);
+      const imageBase64 = await generateEditedImage(client, preparedImagePath, options);
+      fs.writeFileSync(outputPath, Buffer.from(imageBase64, 'base64'));
+      console.log(`Saved ${path.basename(outputPath)}`);
+    } finally {
+      if (preparedImagePath && fs.existsSync(preparedImagePath)) {
+        fs.unlinkSync(preparedImagePath);
+      }
     }
-
-    fs.writeFileSync(outputPath, Buffer.from(imageBase64, 'base64'));
-    console.log(`Saved ${path.basename(outputPath)}`);
   }
 
   console.log('\nBatch complete.');

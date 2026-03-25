@@ -1,13 +1,15 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeScreen from './src/screens/HomeScreen';
+import LoginScreen from './src/screens/LoginScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseDetailScreen from './src/screens/ExerciseDetailScreen';
@@ -16,6 +18,25 @@ import { colors } from './src/theme/colors';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const SESSION_KEY = 'pintofit_active_user';
+const FAMILY_USERS = [
+  'Juan',
+  'Raul',
+  'Samuel',
+  'Rosalina',
+  'Luis',
+  'Lisette',
+  'Mafe',
+  'Alejo',
+  'Jeremy',
+  'Eliana',
+  'Oornaldo',
+];
+
+function resolveFamilyUser(name) {
+  const normalized = name.trim().toLowerCase();
+  return FAMILY_USERS.find((user) => user.toLowerCase() === normalized) || null;
+}
 
 function CustomTabBar({ state, descriptors, navigation }) {
   return (
@@ -65,13 +86,15 @@ const tabStyles = StyleSheet.create({
   tab: { alignItems: 'center', justifyContent: 'center' },
 });
 
-function Tabs({ navigation: rootNavigation }) {
+function Tabs({ activeUser, onLogout }) {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home">
+        {() => <HomeScreen currentUser={activeUser} onLogout={onLogout} />}
+      </Tab.Screen>
       <Tab.Screen name="Workouts" component={WorkoutsScreen} />
       <Tab.Screen name="CalorieEstimator" component={CalorieEstimatorScreen} />
     </Tab.Navigator>
@@ -79,11 +102,49 @@ function Tabs({ navigation: rootNavigation }) {
 }
 
 export default function App() {
+  const [activeUser, setActiveUser] = useState(null);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SESSION_KEY).then((storedUser) => {
+      if (storedUser) {
+        const resolvedUser = resolveFamilyUser(storedUser);
+        if (resolvedUser) setActiveUser(resolvedUser);
+      }
+      setSessionReady(true);
+    });
+  }, []);
+
+  async function handleLogin(name) {
+    const resolvedUser = resolveFamilyUser(name);
+    if (!resolvedUser) return false;
+    setActiveUser(resolvedUser);
+    await AsyncStorage.setItem(SESSION_KEY, resolvedUser);
+    return true;
+  }
+
+  async function handleLogout() {
+    setActiveUser(null);
+    await AsyncStorage.removeItem(SESSION_KEY);
+  }
+
+  if (!sessionReady) {
+    return <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }} />;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: colors.bg } }}>
-          <Stack.Screen name="Tabs" component={Tabs} />
+          {activeUser ? (
+            <Stack.Screen name="Tabs">
+              {() => <Tabs activeUser={activeUser} onLogout={handleLogout} />}
+            </Stack.Screen>
+          ) : (
+            <Stack.Screen name="Login">
+              {() => <LoginScreen onLogin={handleLogin} allowedUsers={FAMILY_USERS} />}
+            </Stack.Screen>
+          )}
           <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />
           <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
         </Stack.Navigator>

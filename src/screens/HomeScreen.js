@@ -19,8 +19,6 @@ import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const STORAGE_KEY = 'pintofit_logged_workouts';
-const AVATAR_KEY = 'pintofit_avatar_uri';
 
 const cardMeta = {
   chest_triceps:  { bg: colors.yellowCard,   tag: 'Push', tagColor: '#B8860B' },
@@ -35,7 +33,7 @@ function getGreeting() {
   return 'Good evening,';
 }
 
-export default function HomeScreen() {
+export default function HomeScreen({ currentUser, onLogout }) {
   const navigation = useNavigation();
   const todayIndex = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
@@ -44,15 +42,20 @@ export default function HomeScreen() {
   const [avatarUri, setAvatarUri] = useState(null);
 
   const days = workoutProgram.days;
+  const userKey = (currentUser || 'guest').trim().toLowerCase().replace(/\s+/g, '_');
+  const storageKey = `pintofit_logged_workouts_${userKey}`;
+  const avatarKey = `pintofit_avatar_uri_${userKey}`;
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+    AsyncStorage.getItem(storageKey).then((raw) => {
       if (raw) setLoggedWorkouts(JSON.parse(raw));
+      else setLoggedWorkouts({});
     });
-    AsyncStorage.getItem(AVATAR_KEY).then((uri) => {
+    AsyncStorage.getItem(avatarKey).then((uri) => {
       if (uri) setAvatarUri(uri);
+      else setAvatarUri(null);
     });
-  }, []);
+  }, [avatarKey, storageKey]);
 
   async function pickAvatar() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -66,14 +69,14 @@ export default function HomeScreen() {
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
       setAvatarUri(uri);
-      await AsyncStorage.setItem(AVATAR_KEY, uri);
+      await AsyncStorage.setItem(avatarKey, uri);
     }
   }
 
   async function logWorkout(dayIndex, workoutId) {
     const updated = { ...loggedWorkouts, [dayIndex]: workoutId };
     setLoggedWorkouts(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
     setPickerVisible(false);
   }
 
@@ -81,7 +84,7 @@ export default function HomeScreen() {
     const updated = { ...loggedWorkouts };
     delete updated[dayIndex];
     setLoggedWorkouts(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
     setPickerVisible(false);
   }
 
@@ -105,23 +108,29 @@ export default function HomeScreen() {
 
         {/* Greeting */}
         <View style={styles.greetingBlock}>
-          <View style={styles.greetingRow}>
-            <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={styles.avatarWrapper}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={36} color="#fff" />
+          <View style={styles.greetingHeader}>
+            <View style={styles.greetingRow}>
+              <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={styles.avatarWrapper}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Ionicons name="person" size={36} color="#fff" />
+                  </View>
+                )}
+                <View style={styles.avatarEditBadge}>
+                  <Ionicons name="camera" size={13} color="#fff" />
                 </View>
-              )}
-              <View style={styles.avatarEditBadge}>
-                <Ionicons name="camera" size={13} color="#fff" />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.greeting}>{getGreeting()}</Text>
+                <Text style={styles.greetingName}>{currentUser}</Text>
               </View>
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.greetingName}>Pintico</Text>
             </View>
+            <TouchableOpacity onPress={onLogout} style={styles.logoutBtn} activeOpacity={0.8}>
+              <Ionicons name="log-out-outline" size={18} color={colors.text} />
+              <Text style={styles.logoutText}>Switch user</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -318,6 +327,7 @@ const styles = StyleSheet.create({
   logo: { width: 120, height: 120 },
 
   greetingBlock: { paddingHorizontal: 24, paddingBottom: 20 },
+  greetingHeader: { gap: 14 },
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 16 },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
@@ -331,6 +341,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: colors.bg,
   },
+  logoutBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.card,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  logoutText: { fontSize: 14, fontWeight: '600', color: colors.text },
 
   weekStrip: {
     flexDirection: 'row',
