@@ -106,22 +106,22 @@ export default function HomeScreen() {
         {/* Greeting */}
         <View style={styles.greetingBlock}>
           <View style={styles.greetingRow}>
-            <View>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.greetingName}>Pintico</Text>
-            </View>
             <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={styles.avatarWrapper}>
               {avatarUri ? (
                 <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={28} color="#fff" />
+                  <Ionicons name="person" size={36} color="#fff" />
                 </View>
               )}
               <View style={styles.avatarEditBadge}>
-                <Ionicons name="camera" size={11} color="#fff" />
+                <Ionicons name="camera" size={13} color="#fff" />
               </View>
             </TouchableOpacity>
+            <View>
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.greetingName}>Pintico</Text>
+            </View>
           </View>
         </View>
 
@@ -318,15 +318,15 @@ const styles = StyleSheet.create({
   logo: { width: 120, height: 120 },
 
   greetingBlock: { paddingHorizontal: 24, paddingBottom: 20 },
-  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 16 },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
-  avatarWrapper: { position: 'relative', width: 56, height: 56 },
-  avatarImg: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: colors.blue },
-  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
+  avatarWrapper: { position: 'relative', width: 73, height: 73 },
+  avatarImg: { width: 73, height: 73, borderRadius: 36.5, borderWidth: 2, borderColor: colors.blue },
+  avatarPlaceholder: { width: 73, height: 73, borderRadius: 36.5, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
   avatarEditBadge: {
     position: 'absolute', bottom: 0, right: 0,
-    width: 20, height: 20, borderRadius: 10,
+    width: 24, height: 24, borderRadius: 12,
     backgroundColor: colors.text,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: colors.bg,
