@@ -17,22 +17,11 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
+import { FAMILY_AVATARS, getUserKey } from '../data/family';
+import { awardWeeklyPoints, getUserWeeklyPoints, getWeeklyPoints } from '../utils/points';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
-const FAMILY_AVATARS = {
-  alejo: require('../../assets/avatars/alejo.png'),
-  claudia: require('../../assets/avatars/claudia.png'),
-  eliana: require('../../assets/avatars/eliana.png'),
-  jeremy: require('../../assets/avatars/jeremy.png'),
-  lisette: require('../../assets/avatars/lisette.png'),
-  luis: require('../../assets/avatars/luis.png'),
-  mafe: require('../../assets/avatars/mafe.png'),
-  orlando: require('../../assets/avatars/orlando.png'),
-  raul: require('../../assets/avatars/raul.png'),
-  rosalina: require('../../assets/avatars/rosalina.png'),
-  samuel: require('../../assets/avatars/sam.png'),
-};
 
 const cardMeta = {
   chest_triceps:  { bg: colors.yellowCard,   tag: 'Push', tagColor: colors.green },
@@ -53,14 +42,16 @@ export default function HomeScreen({ currentUser, onLogout }) {
   const [selectedDay, setSelectedDay] = useState(todayIndex);
   const [loggedWorkouts, setLoggedWorkouts] = useState({});
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [customWorkoutName, setCustomWorkoutName] = useState('');
   const [mealModalVisible, setMealModalVisible] = useState(false);
   const [mealLog, setMealLog] = useState({});
   const [mealType, setMealType] = useState(MEAL_TYPES[0]);
   const [mealName, setMealName] = useState('');
   const [mealCalories, setMealCalories] = useState('');
+  const [weeklyPoints, setWeeklyPoints] = useState(0);
 
   const days = workoutProgram.days;
-  const userKey = (currentUser || 'guest').trim().toLowerCase().replace(/\s+/g, '_');
+  const userKey = getUserKey(currentUser);
   const storageKey = `pintofit_logged_workouts_${userKey}`;
   const mealStorageKey = `pintofit_meals_${userKey}`;
   const defaultAvatarSource = FAMILY_AVATARS[userKey] || null;
@@ -74,12 +65,43 @@ export default function HomeScreen({ currentUser, onLogout }) {
       if (raw) setMealLog(JSON.parse(raw));
       else setMealLog({});
     });
+    getWeeklyPoints().then((state) => {
+      setWeeklyPoints(getUserWeeklyPoints(state.scores, currentUser));
+    });
   }, [mealStorageKey, storageKey]);
 
   async function logWorkout(dayIndex, workoutId) {
+    const shouldAwardPoints = !loggedWorkouts[dayIndex];
     const updated = { ...loggedWorkouts, [dayIndex]: workoutId };
     setLoggedWorkouts(updated);
     await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+    if (shouldAwardPoints) {
+      const pointsState = await awardWeeklyPoints(currentUser, 5);
+      setWeeklyPoints(getUserWeeklyPoints(pointsState.scores, currentUser));
+    }
+    setPickerVisible(false);
+  }
+
+  async function logCustomWorkout(dayIndex) {
+    const trimmedName = customWorkoutName.trim();
+    if (!trimmedName) return;
+
+    const updated = {
+      ...loggedWorkouts,
+      [dayIndex]: {
+        type: 'custom',
+        name: trimmedName,
+      },
+    };
+    const shouldAwardPoints = !loggedWorkouts[dayIndex];
+
+    setLoggedWorkouts(updated);
+    await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+    if (shouldAwardPoints) {
+      const pointsState = await awardWeeklyPoints(currentUser, 5);
+      setWeeklyPoints(getUserWeeklyPoints(pointsState.scores, currentUser));
+    }
+    setCustomWorkoutName('');
     setPickerVisible(false);
   }
 
@@ -110,6 +132,8 @@ export default function HomeScreen({ currentUser, onLogout }) {
 
     setMealLog(updated);
     await AsyncStorage.setItem(mealStorageKey, JSON.stringify(updated));
+    const pointsState = await awardWeeklyPoints(currentUser, 1);
+    setWeeklyPoints(getUserWeeklyPoints(pointsState.scores, currentUser));
     setMealName('');
     setMealCalories('');
     setMealType(MEAL_TYPES[0]);
@@ -128,8 +152,11 @@ export default function HomeScreen({ currentUser, onLogout }) {
   }
 
   const selectedDayWorkoutId = loggedWorkouts[selectedDay];
-  const selectedDayWorkout = selectedDayWorkoutId
+  const selectedDayWorkout = typeof selectedDayWorkoutId === 'string'
     ? days.find((d) => d.id === selectedDayWorkoutId)
+    : null;
+  const selectedCustomWorkout = selectedDayWorkoutId && typeof selectedDayWorkoutId === 'object'
+    ? selectedDayWorkoutId
     : null;
   const selectedDayMeals = mealLog[selectedDay] || [];
   const totalCalories = selectedDayMeals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
@@ -149,22 +176,29 @@ export default function HomeScreen({ currentUser, onLogout }) {
 
         {/* Greeting */}
         <View style={styles.greetingBlock}>
-          <View style={styles.greetingRow}>
-            <View style={styles.avatarWrapper}>
-              {defaultAvatarSource ? (
-                <Image source={defaultAvatarSource} style={styles.avatarImg} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={36} color="#fff" />
-                </View>
-              )}
-              <TouchableOpacity onPress={onLogout} style={styles.logoutBadge} activeOpacity={0.85}>
-                <Ionicons name="log-out-outline" size={12} color="#fff" />
-              </TouchableOpacity>
+          <View style={styles.greetingHeaderRow}>
+            <View style={styles.greetingRow}>
+              <View style={styles.avatarWrapper}>
+                {defaultAvatarSource ? (
+                  <Image source={defaultAvatarSource} style={styles.avatarImg} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Ionicons name="person" size={36} color="#fff" />
+                  </View>
+                )}
+                <TouchableOpacity onPress={onLogout} style={styles.logoutBadge} activeOpacity={0.85}>
+                  <Ionicons name="log-out-outline" size={12} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              <View>
+                <Text style={styles.greeting}>{getGreeting()}</Text>
+                <Text style={styles.greetingName}>{currentUser}</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.greetingName}>{currentUser}</Text>
+            <View style={styles.pointsBadge}>
+              <Ionicons name="trophy" size={18} color={colors.green} />
+              <Text style={styles.pointsCount}>{weeklyPoints}</Text>
+              <Text style={styles.pointsLabel}>week</Text>
             </View>
           </View>
         </View>
@@ -229,6 +263,22 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 </Text>
               </View>
             </TouchableOpacity>
+          ) : selectedCustomWorkout ? (
+            <View style={[styles.focusCard, styles.customWorkoutCard]}>
+              <View style={styles.focusTop}>
+                <View style={[styles.focusPill, styles.customWorkoutPill]}>
+                  <Text style={[styles.focusPillText, styles.customWorkoutPillText]}>
+                    {selectedDay === todayIndex ? "Today's Workout" : DAY_LABELS[selectedDay]}
+                    {' · '}Custom
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setPickerVisible(true)} hitSlop={8}>
+                  <Ionicons name="create-outline" size={18} color="rgba(255,255,255,0.75)" />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.focusName, styles.customWorkoutName]}>{selectedCustomWorkout.name}</Text>
+              <Text style={styles.customWorkoutSub}>Custom workout logged for this day.</Text>
+            </View>
           ) : (
             <TouchableOpacity
               style={styles.restCard}
@@ -240,7 +290,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 <Text style={styles.restTitle}>
                   {selectedDay === todayIndex ? 'Log Today\'s Workout' : `Log ${DAY_LABELS[selectedDay]}'s Workout`}
                 </Text>
-                <Text style={styles.restSub}>Tap to choose Day A, B or C</Text>
+                <Text style={styles.restSub}>Tap to choose Day A, B, C, or custom workout</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -354,6 +404,23 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 </View>
               </TouchableOpacity>
             ))}
+            <View style={styles.customWorkoutBox}>
+              <Text style={styles.customWorkoutLabel}>Custom Workout</Text>
+              <TextInput
+                value={customWorkoutName}
+                onChangeText={setCustomWorkoutName}
+                placeholder="What did you work on?"
+                placeholderTextColor={colors.textMuted}
+                style={styles.input}
+              />
+              <TouchableOpacity
+                style={styles.saveMealBtn}
+                onPress={() => logCustomWorkout(selectedDay)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.saveMealText}>Save custom workout</Text>
+              </TouchableOpacity>
+            </View>
             {loggedWorkouts[selectedDay] && (
               <TouchableOpacity
                 style={styles.clearBtn}
@@ -459,6 +526,7 @@ const styles = StyleSheet.create({
   logo: { width: 240, height: 92 },
 
   greetingBlock: { paddingHorizontal: 24, paddingBottom: 18 },
+  greetingHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 16 },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
@@ -478,6 +546,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.bg,
   },
+  pointsBadge: {
+    minWidth: 78,
+    backgroundColor: colors.text,
+    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  pointsCount: { fontSize: 22, fontWeight: '800', color: colors.white, letterSpacing: -0.6 },
+  pointsLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 0.5 },
 
   weekStrip: {
     flexDirection: 'row',
@@ -517,6 +597,11 @@ const styles = StyleSheet.create({
   focusName: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   focusMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   focusExCount: { fontSize: 13, color: 'rgba(0,0,0,0.45)', fontWeight: '500' },
+  customWorkoutCard: { backgroundColor: colors.text },
+  customWorkoutPill: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  customWorkoutPillText: { color: colors.green },
+  customWorkoutName: { color: colors.white },
+  customWorkoutSub: { fontSize: 14, color: 'rgba(255,255,255,0.72)', fontWeight: '500' },
 
   calorieSection: { paddingHorizontal: 16, marginBottom: 28 },
   calorieHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
@@ -624,6 +709,14 @@ const styles = StyleSheet.create({
   },
   pickerLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(0,0,0,0.4)', letterSpacing: 0.5, marginBottom: 2 },
   pickerName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  customWorkoutBox: {
+    marginTop: 4,
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    padding: 16,
+    gap: 12,
+  },
+  customWorkoutLabel: { fontSize: 16, fontWeight: '700', color: colors.text },
   clearBtn: { alignItems: 'center', paddingTop: 8 },
   clearText: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
   mealTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 },

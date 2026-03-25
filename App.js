@@ -10,34 +10,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HomeScreen from './src/screens/HomeScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseDetailScreen from './src/screens/ExerciseDetailScreen';
 import CalorieEstimatorScreen from './src/screens/CalorieEstimatorScreen';
 import { colors } from './src/theme/colors';
+import { FAMILY_USERS, resolveFamilyUser } from './src/data/family';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const SESSION_KEY = 'pintofit_active_user';
-const FAMILY_USERS = [
-  'Juan',
-  'Raul',
-  'Samuel',
-  'Rosalina',
-  'Claudia',
-  'Luis',
-  'Lisette',
-  'Mafe',
-  'Alejo',
-  'Jeremy',
-  'Eliana',
-  'Orlando',
-];
-
-function resolveFamilyUser(name) {
-  const normalized = name.trim().toLowerCase();
-  return FAMILY_USERS.find((user) => user.toLowerCase() === normalized) || null;
-}
 
 function CustomTabBar({ state, descriptors, navigation }) {
   return (
@@ -45,7 +28,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
       <View style={tabStyles.pill}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
-          const icons = { Home: 'home', Workouts: 'grid', CalorieEstimator: 'scan' };
+          const icons = { Home: 'home', Workouts: 'grid', CalorieEstimator: 'scan', Leaderboard: 'trophy' };
           const iconName = focused ? icons[route.name] : `${icons[route.name]}-outline`;
           return (
             <TouchableOpacity
@@ -99,6 +82,9 @@ function Tabs({ activeUser, onLogout }) {
       <Tab.Screen name="Workouts" component={WorkoutsScreen} />
       <Tab.Screen name="CalorieEstimator">
         {() => <CalorieEstimatorScreen currentUser={activeUser} />}
+      </Tab.Screen>
+      <Tab.Screen name="Leaderboard">
+        {() => <LeaderboardScreen currentUser={activeUser} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
