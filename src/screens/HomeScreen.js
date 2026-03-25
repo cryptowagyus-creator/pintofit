@@ -88,11 +88,9 @@ export default function HomeScreen() {
               <Text style={styles.greeting}>{getGreeting()}</Text>
               <Text style={styles.greetingName}>Pintico</Text>
             </View>
-            <Image
-              source={require('../../assets/avatar.png')}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={28} color="#fff" />
+            </View>
           </View>
         </View>
 
@@ -292,7 +290,7 @@ const styles = StyleSheet.create({
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
-  avatar: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: colors.blue },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
 
   weekStrip: {
     flexDirection: 'row',
