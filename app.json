@@ -5,9 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#0a0a0a"
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -16,7 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0a0a0a"
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.jpinto.pintofit"
     },
