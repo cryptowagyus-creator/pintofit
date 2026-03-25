@@ -59,15 +59,15 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Logo */}
+        <View style={styles.logoBlock}>
+          <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        </View>
+
         {/* Greeting */}
         <View style={styles.greetingBlock}>
-          <View style={styles.greetingRow}>
-            <View>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.greetingName}>Pintico</Text>
-            </View>
-            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-          </View>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <Text style={styles.greetingName}>Pintico</Text>
         </View>
 
         {/* Week Strip */}
@@ -211,11 +211,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: 120 },
 
-  greetingBlock: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 20 },
-  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logoBlock: { alignItems: 'center', paddingTop: 24, paddingBottom: 8 },
+  logo: { width: 120, height: 120 },
+  greetingBlock: { paddingHorizontal: 24, paddingBottom: 20 },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
-  logo: { width: 144, height: 144 },
 
   weekStrip: {
     flexDirection: 'row',
