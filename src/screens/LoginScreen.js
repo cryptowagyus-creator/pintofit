@@ -28,8 +28,10 @@ export default function LoginScreen({ onLogin }) {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
       <View style={styles.container}>
-        <View style={styles.centerStack}>
+        <View style={styles.logoZone}>
         <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        </View>
+        <View style={styles.cardZone}>
         <View style={styles.card}>
           <Text style={styles.title}>Family Login</Text>
           <Text style={styles.subtitle}>Type your name to open your dashboard.</Text>
@@ -63,18 +65,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  centerStack: {
+  logoZone: {
+    alignItems: 'center',
     width: '100%',
-    maxWidth: 420,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  cardZone: {
+    flex: 1,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: { width: 360, height: 132, marginBottom: 18 },
   card: {
     width: '100%',
+    marginTop: -40,
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
