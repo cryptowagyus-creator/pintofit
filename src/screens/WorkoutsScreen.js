@@ -17,7 +17,7 @@ const cardMeta = {
   chest_triceps: {
     bg: colors.yellowCard,
     tag: 'Push',
-    tagColor: '#B8860B',
+    tagColor: colors.green,
   },
   back_biceps: {
     bg: colors.blueCard,

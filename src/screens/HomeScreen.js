@@ -35,7 +35,7 @@ const FAMILY_AVATARS = {
 };
 
 const cardMeta = {
-  chest_triceps:  { bg: colors.yellowCard,   tag: 'Push', tagColor: '#B8860B' },
+  chest_triceps:  { bg: colors.yellowCard,   tag: 'Push', tagColor: colors.green },
   back_biceps:    { bg: colors.blueCard,     tag: 'Pull', tagColor: colors.blue },
   legs_shoulders: { bg: colors.lavenderCard, tag: 'Legs', tagColor: colors.lavender },
 };

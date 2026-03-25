@@ -61,13 +61,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: { width: 132, height: 132, marginBottom: 10 },
+  logo: { width: 320, height: 120, marginBottom: 16 },
   card: {
     width: '100%',
+    maxWidth: 420,
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
