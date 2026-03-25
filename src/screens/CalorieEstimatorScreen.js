@@ -9,20 +9,27 @@ import {
   Image,
   ActivityIndicator,
   Platform,
+  TextInput,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 const ANTHROPIC_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_KEY;
 
-export default function CalorieEstimatorScreen({ navigation }) {
+export default function CalorieEstimatorScreen({ currentUser }) {
   const [image, setImage] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [imageMimeType, setImageMimeType] = useState('image/jpeg');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [mealName, setMealName] = useState('');
+  const [logMessage, setLogMessage] = useState(null);
+
+  const userKey = (currentUser || 'guest').trim().toLowerCase().replace(/\s+/g, '_');
+  const mealStorageKey = `pintofit_meals_${userKey}`;
 
   const getMimeType = (uri) => {
     const ext = uri?.split('?')[0].split('.').pop()?.toLowerCase();
@@ -33,6 +40,7 @@ export default function CalorieEstimatorScreen({ navigation }) {
   const pickImage = async () => {
     setResult(null);
     setError(null);
+    setLogMessage(null);
     const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       base64: true,
@@ -48,8 +56,12 @@ export default function CalorieEstimatorScreen({ navigation }) {
   const takePhoto = async () => {
     setResult(null);
     setError(null);
+    setLogMessage(null);
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) { setError('Camera permission required.'); return; }
+    if (!permission.granted) {
+      setError('Camera permission required.');
+      return;
+    }
     const res = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 });
     if (!res.canceled && res.assets?.[0]) {
       setImage(res.assets[0].uri);
@@ -64,9 +76,12 @@ export default function CalorieEstimatorScreen({ navigation }) {
       setError('API key not set. Add EXPO_PUBLIC_ANTHROPIC_KEY in Railway environment variables.');
       return;
     }
+
     setLoading(true);
     setError(null);
     setResult(null);
+    setLogMessage(null);
+
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -78,7 +93,7 @@ export default function CalorieEstimatorScreen({ navigation }) {
         },
         body: JSON.stringify({
           model: 'claude-opus-4-6',
-          max_tokens: 1024,
+          max_tokens: 128,
           messages: [{
             role: 'user',
             content: [
@@ -88,30 +103,54 @@ export default function CalorieEstimatorScreen({ navigation }) {
               },
               {
                 type: 'text',
-                text: `You are a nutrition expert. Analyze this food image and provide:
-
-1. **What you see** — identify all food items
-2. **Estimated calories** — total with a range
-3. **Macros** — protein, carbs, fat in grams
-4. **Portion note** — assumptions about serving size
-
-Be concise and direct. If it's not food, say so.`,
+                text: 'Estimate the total calories in this meal image. Respond with only one integer number. Do not include words, ranges, explanations, punctuation, markdown, or extra text. If the image is not food, respond with 0.',
               },
             ],
           }],
         }),
       });
+
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err?.error?.message || `Error ${response.status}`);
       }
+
       const data = await response.json();
-      setResult(data.content[0].text);
+      const rawText = data.content?.[0]?.text?.trim() || '';
+      const parsed = parseInt(rawText.replace(/[^\d]/g, ''), 10);
+
+      if (Number.isNaN(parsed)) {
+        throw new Error('Could not read a calorie estimate from the response.');
+      }
+
+      setResult(parsed);
     } catch (e) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const logMeal = async () => {
+    if (result == null) return;
+
+    const todayIndex = new Date().getDay();
+    const entry = {
+      id: `${Date.now()}`,
+      type: 'Meal',
+      name: mealName.trim() || 'Estimated meal',
+      calories: result,
+    };
+
+    const raw = await AsyncStorage.getItem(mealStorageKey);
+    const existing = raw ? JSON.parse(raw) : {};
+    const updated = {
+      ...existing,
+      [todayIndex]: [...(existing[todayIndex] || []), entry],
+    };
+
+    await AsyncStorage.setItem(mealStorageKey, JSON.stringify(updated));
+    setLogMessage(`Logged ${entry.name} for today.`);
   };
 
   const reset = () => {
@@ -120,6 +159,8 @@ Be concise and direct. If it's not food, say so.`,
     setImageMimeType('image/jpeg');
     setResult(null);
     setError(null);
+    setMealName('');
+    setLogMessage(null);
   };
 
   return (
@@ -129,18 +170,16 @@ Be concise and direct. If it's not food, say so.`,
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Calorie Estimator</Text>
-          <Text style={styles.sub}>Upload a photo of your meal for an AI-powered nutrition estimate.</Text>
+          <Text style={styles.sub}>Upload a meal photo, get one calorie number, and log it for today.</Text>
         </View>
 
-        {/* Upload Area */}
         {!image ? (
           <View style={styles.uploadCard}>
             <Ionicons name="image-outline" size={36} color={colors.textMuted} />
             <Text style={styles.uploadTitle}>Select a photo</Text>
-            <Text style={styles.uploadSub}>Claude will identify the food and estimate macros</Text>
+            <Text style={styles.uploadSub}>The estimator returns one calorie number only.</Text>
             <View style={styles.uploadBtns}>
               <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
                 <Ionicons name="images-outline" size={17} color={colors.blue} />
@@ -176,14 +215,13 @@ Be concise and direct. If it's not food, say so.`,
                   <Ionicons name="sparkles-outline" size={16} color={colors.white} />
                 )}
                 <Text style={styles.analyzeBtnText}>
-                  {loading ? 'Analyzing…' : 'Estimate Calories'}
+                  {loading ? 'Analyzing...' : 'Estimate Calories'}
                 </Text>
               </TouchableOpacity>
             )}
           </>
         )}
 
-        {/* Error */}
         {error && (
           <View style={styles.errorCard}>
             <Ionicons name="alert-circle-outline" size={16} color={colors.red} />
@@ -191,16 +229,27 @@ Be concise and direct. If it's not food, say so.`,
           </View>
         )}
 
-        {/* Result */}
-        {result && (
+        {result != null && (
           <View style={styles.resultCard}>
             <View style={styles.resultHeader}>
-              <Text style={styles.resultLabel}>ANALYSIS</Text>
+              <Text style={styles.resultLabel}>CALORIES</Text>
               <TouchableOpacity onPress={reset}>
                 <Text style={styles.newPhoto}>New photo</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.resultText}>{result}</Text>
+            <Text style={styles.resultNumber}>{result}</Text>
+            <Text style={styles.resultUnit}>estimated calories</Text>
+            <TextInput
+              value={mealName}
+              onChangeText={setMealName}
+              placeholder="Meal name"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+            />
+            <TouchableOpacity style={styles.logMealBtn} onPress={logMeal} activeOpacity={0.85}>
+              <Text style={styles.logMealBtnText}>Log meal for today</Text>
+            </TouchableOpacity>
+            {logMessage ? <Text style={styles.logMessage}>{logMessage}</Text> : null}
           </View>
         )}
       </ScrollView>
@@ -335,5 +384,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   newPhoto: { fontSize: 14, color: colors.blue },
-  resultText: { fontSize: 15, color: colors.text, lineHeight: 24 },
+  resultNumber: { fontSize: 42, fontWeight: '800', color: colors.text, letterSpacing: -1 },
+  resultUnit: { fontSize: 14, color: colors.textSecondary, marginTop: -4 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: colors.text,
+  },
+  logMealBtn: {
+    backgroundColor: colors.text,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logMealBtnText: { fontSize: 15, fontWeight: '700', color: colors.white },
+  logMessage: { fontSize: 14, color: colors.green, fontWeight: '600' },
 });

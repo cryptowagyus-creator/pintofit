@@ -24,6 +24,7 @@ const FAMILY_USERS = [
   'Raul',
   'Samuel',
   'Rosalina',
+  'Claudia',
   'Luis',
   'Lisette',
   'Mafe',

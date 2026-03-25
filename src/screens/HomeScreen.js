@@ -10,6 +10,7 @@ import {
   Image,
   Modal,
   Pressable,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -18,8 +19,10 @@ import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const FAMILY_AVATARS = {
   alejo: require('../../assets/avatars/alejo.png'),
+  claudia: require('../../assets/avatars/claudia.png'),
   eliana: require('../../assets/avatars/eliana.png'),
   jeremy: require('../../assets/avatars/jeremy.png'),
   lisette: require('../../assets/avatars/lisette.png'),
@@ -44,16 +47,22 @@ function getGreeting() {
   return 'Good evening,';
 }
 
-export default function HomeScreen({ currentUser }) {
+export default function HomeScreen({ currentUser, onLogout }) {
   const navigation = useNavigation();
   const todayIndex = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
   const [loggedWorkouts, setLoggedWorkouts] = useState({});
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [mealModalVisible, setMealModalVisible] = useState(false);
+  const [mealLog, setMealLog] = useState({});
+  const [mealType, setMealType] = useState(MEAL_TYPES[0]);
+  const [mealName, setMealName] = useState('');
+  const [mealCalories, setMealCalories] = useState('');
 
   const days = workoutProgram.days;
   const userKey = (currentUser || 'guest').trim().toLowerCase().replace(/\s+/g, '_');
   const storageKey = `pintofit_logged_workouts_${userKey}`;
+  const mealStorageKey = `pintofit_meals_${userKey}`;
   const defaultAvatarSource = FAMILY_AVATARS[userKey] || null;
 
   useEffect(() => {
@@ -61,7 +70,11 @@ export default function HomeScreen({ currentUser }) {
       if (raw) setLoggedWorkouts(JSON.parse(raw));
       else setLoggedWorkouts({});
     });
-  }, [storageKey]);
+    AsyncStorage.getItem(mealStorageKey).then((raw) => {
+      if (raw) setMealLog(JSON.parse(raw));
+      else setMealLog({});
+    });
+  }, [mealStorageKey, storageKey]);
 
   async function logWorkout(dayIndex, workoutId) {
     const updated = { ...loggedWorkouts, [dayIndex]: workoutId };
@@ -78,10 +91,48 @@ export default function HomeScreen({ currentUser }) {
     setPickerVisible(false);
   }
 
+  async function addMeal() {
+    const trimmedName = mealName.trim();
+    if (!trimmedName) return;
+
+    const parsedCalories = mealCalories.trim() ? parseInt(mealCalories.trim(), 10) : null;
+    const entry = {
+      id: `${Date.now()}`,
+      type: mealType,
+      name: trimmedName,
+      calories: Number.isNaN(parsedCalories) ? null : parsedCalories,
+    };
+
+    const updated = {
+      ...mealLog,
+      [selectedDay]: [...(mealLog[selectedDay] || []), entry],
+    };
+
+    setMealLog(updated);
+    await AsyncStorage.setItem(mealStorageKey, JSON.stringify(updated));
+    setMealName('');
+    setMealCalories('');
+    setMealType(MEAL_TYPES[0]);
+    setMealModalVisible(false);
+  }
+
+  async function removeMeal(mealId) {
+    const updatedDayMeals = (mealLog[selectedDay] || []).filter((meal) => meal.id !== mealId);
+    const updated = { ...mealLog };
+
+    if (updatedDayMeals.length) updated[selectedDay] = updatedDayMeals;
+    else delete updated[selectedDay];
+
+    setMealLog(updated);
+    await AsyncStorage.setItem(mealStorageKey, JSON.stringify(updated));
+  }
+
   const selectedDayWorkoutId = loggedWorkouts[selectedDay];
   const selectedDayWorkout = selectedDayWorkoutId
     ? days.find((d) => d.id === selectedDayWorkoutId)
     : null;
+  const selectedDayMeals = mealLog[selectedDay] || [];
+  const totalCalories = selectedDayMeals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -107,6 +158,9 @@ export default function HomeScreen({ currentUser }) {
                   <Ionicons name="person" size={36} color="#fff" />
                 </View>
               )}
+              <TouchableOpacity onPress={onLogout} style={styles.logoutBadge} activeOpacity={0.85}>
+                <Ionicons name="log-out-outline" size={12} color="#fff" />
+              </TouchableOpacity>
             </View>
             <View>
               <Text style={styles.greeting}>{getGreeting()}</Text>
@@ -192,6 +246,49 @@ export default function HomeScreen({ currentUser }) {
           )}
         </View>
 
+        <View style={styles.calorieSection}>
+          <View style={styles.calorieHeader}>
+            <View>
+              <Text style={styles.sectionTitleCompact}>Calories</Text>
+              <Text style={styles.calorieSubtitle}>
+                {selectedDay === todayIndex ? 'Today' : DAY_LABELS[selectedDay]}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.mealAddBtn} onPress={() => setMealModalVisible(true)} activeOpacity={0.85}>
+              <Ionicons name="add" size={18} color={colors.white} />
+              <Text style={styles.mealAddText}>Log meal</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.calorieCard}>
+            <Text style={styles.calorieCount}>{totalCalories}</Text>
+            <Text style={styles.calorieLabel}>calories logged</Text>
+
+            {selectedDayMeals.length ? (
+              <View style={styles.mealList}>
+                {selectedDayMeals.map((meal) => (
+                  <View key={meal.id} style={styles.mealRow}>
+                    <View style={styles.mealRowMain}>
+                      <Text style={styles.mealType}>{meal.type}</Text>
+                      <Text style={styles.mealNameText}>{meal.name}</Text>
+                    </View>
+                    <View style={styles.mealRowMeta}>
+                      <Text style={styles.mealCaloriesText}>
+                        {meal.calories != null ? `${meal.calories} cal` : 'No calories'}
+                      </Text>
+                      <TouchableOpacity onPress={() => removeMeal(meal.id)} hitSlop={8}>
+                        <Ionicons name="close" size={18} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyMeals}>No meals logged for this day yet.</Text>
+            )}
+          </View>
+        </View>
+
         {/* Full Plan */}
         <Text style={styles.sectionTitle}>Your Plan</Text>
         <View style={styles.cardsContainer}>
@@ -268,6 +365,60 @@ export default function HomeScreen({ currentUser }) {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={mealModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMealModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setMealModalVisible(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>
+              {selectedDay === todayIndex ? "Log Today's Meal" : `Log ${DAY_LABELS[selectedDay]}'s Meal`}
+            </Text>
+
+            <View style={styles.mealTypeRow}>
+              {MEAL_TYPES.map((type) => {
+                const isActive = mealType === type;
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.mealTypePill, isActive && styles.mealTypePillActive]}
+                    onPress={() => setMealType(type)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.mealTypePillText, isActive && styles.mealTypePillTextActive]}>
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TextInput
+              value={mealName}
+              onChangeText={setMealName}
+              placeholder="Food name"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+            />
+            <TextInput
+              value={mealCalories}
+              onChangeText={setMealCalories}
+              placeholder="Calories (optional)"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="number-pad"
+              style={styles.input}
+            />
+
+            <TouchableOpacity style={styles.saveMealBtn} onPress={addMeal} activeOpacity={0.85}>
+              <Text style={styles.saveMealText}>Save meal</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -304,16 +455,29 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: 120 },
 
-  logoBlock: { alignItems: 'center', paddingTop: 24, paddingBottom: 8 },
-  logo: { width: 120, height: 120 },
+  logoBlock: { alignItems: 'center', paddingTop: 10, paddingBottom: 0 },
+  logo: { width: 104, height: 104 },
 
-  greetingBlock: { paddingHorizontal: 24, paddingBottom: 20 },
+  greetingBlock: { paddingHorizontal: 24, paddingBottom: 18 },
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 16 },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
   avatarWrapper: { position: 'relative', width: 73, height: 73 },
   avatarImg: { width: 73, height: 73, borderRadius: 36.5, borderWidth: 2, borderColor: colors.blue },
   avatarPlaceholder: { width: 73, height: 73, borderRadius: 36.5, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
+  logoutBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
 
   weekStrip: {
     flexDirection: 'row',
@@ -353,6 +517,48 @@ const styles = StyleSheet.create({
   focusName: { fontSize: 26, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   focusMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   focusExCount: { fontSize: 13, color: 'rgba(0,0,0,0.45)', fontWeight: '500' },
+
+  calorieSection: { paddingHorizontal: 16, marginBottom: 28 },
+  calorieHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sectionTitleCompact: { fontSize: 20, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  calorieSubtitle: { marginTop: 2, fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  mealAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.text,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  mealAddText: { fontSize: 13, fontWeight: '700', color: colors.white },
+  calorieCard: {
+    backgroundColor: colors.card,
+    borderRadius: 22,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  calorieCount: { fontSize: 36, fontWeight: '800', color: colors.text, letterSpacing: -1 },
+  calorieLabel: { marginTop: 2, fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
+  mealList: { marginTop: 18, gap: 12 },
+  mealRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  mealRowMain: { flex: 1, paddingRight: 12 },
+  mealType: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.4, marginBottom: 3 },
+  mealNameText: { fontSize: 15, fontWeight: '700', color: colors.text },
+  mealRowMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mealCaloriesText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  emptyMeals: { marginTop: 18, fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
 
   restCard: {
     flexDirection: 'row',
@@ -420,4 +626,33 @@ const styles = StyleSheet.create({
   pickerName: { fontSize: 16, fontWeight: '700', color: colors.text },
   clearBtn: { alignItems: 'center', paddingTop: 8 },
   clearText: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
+  mealTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 },
+  mealTypePill: {
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: colors.card,
+  },
+  mealTypePillActive: { backgroundColor: colors.text },
+  mealTypePillText: { fontSize: 13, fontWeight: '700', color: colors.text },
+  mealTypePillTextActive: { color: colors.white },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    fontSize: 16,
+    color: colors.text,
+  },
+  saveMealBtn: {
+    marginTop: 4,
+    borderRadius: 16,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+  },
+  saveMealText: { fontSize: 15, fontWeight: '700', color: colors.white },
 });

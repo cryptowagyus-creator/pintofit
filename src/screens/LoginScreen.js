@@ -61,11 +61,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: { width: 160, height: 160, marginBottom: 16 },
+  logo: { width: 132, height: 132, marginBottom: 10 },
   card: {
     width: '100%',
     backgroundColor: colors.card,
