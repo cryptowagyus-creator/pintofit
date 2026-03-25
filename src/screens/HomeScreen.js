@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,24 +8,17 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  Modal,
+  Pressable,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-// Weekly schedule: null = rest day, otherwise workout day id
-const SCHEDULE = {
-  0: null,               // Sun — rest
-  1: null,               // Mon — rest
-  2: 'chest_triceps',    // Tue — Day A
-  3: 'back_biceps',      // Wed — Day B
-  4: 'legs_shoulders',   // Thu — Day C
-  5: 'chest_triceps',    // Fri — Day A
-  6: 'back_biceps',      // Sat — Day B
-};
+const STORAGE_KEY = 'pintofit_logged_workouts';
 
 const cardMeta = {
   chest_triceps:  { bg: colors.yellowCard,   tag: 'Push', tagColor: '#B8860B' },
@@ -44,11 +37,35 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const todayIndex = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
+  const [loggedWorkouts, setLoggedWorkouts] = useState({});
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   const days = workoutProgram.days;
-  const selectedDayId = SCHEDULE[selectedDay];
-  const selectedDayWorkout = selectedDayId
-    ? days.find((d) => d.id === selectedDayId)
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+      if (raw) setLoggedWorkouts(JSON.parse(raw));
+    });
+  }, []);
+
+  async function logWorkout(dayIndex, workoutId) {
+    const updated = { ...loggedWorkouts, [dayIndex]: workoutId };
+    setLoggedWorkouts(updated);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setPickerVisible(false);
+  }
+
+  async function clearWorkout(dayIndex) {
+    const updated = { ...loggedWorkouts };
+    delete updated[dayIndex];
+    setLoggedWorkouts(updated);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setPickerVisible(false);
+  }
+
+  const selectedDayWorkoutId = loggedWorkouts[selectedDay];
+  const selectedDayWorkout = selectedDayWorkoutId
+    ? days.find((d) => d.id === selectedDayWorkoutId)
     : null;
 
   return (
@@ -66,8 +83,17 @@ export default function HomeScreen() {
 
         {/* Greeting */}
         <View style={styles.greetingBlock}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.greetingName}>Pintico</Text>
+          <View style={styles.greetingRow}>
+            <View>
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.greetingName}>Pintico</Text>
+            </View>
+            <Image
+              source={require('../../assets/avatar.png')}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          </View>
         </View>
 
         {/* Week Strip */}
@@ -75,7 +101,7 @@ export default function HomeScreen() {
           {DAY_LABELS.map((label, i) => {
             const isSelected = i === selectedDay;
             const isToday = i === todayIndex;
-            const hasWorkout = !!SCHEDULE[i];
+            const hasWorkout = !!loggedWorkouts[i];
             return (
               <TouchableOpacity
                 key={label}
@@ -88,7 +114,6 @@ export default function HomeScreen() {
                     {label}
                   </Text>
                 </View>
-                {/* Dot indicator: workout day */}
                 <View style={[
                   styles.dot,
                   hasWorkout ? styles.dotWorkout : styles.dotRest,
@@ -115,7 +140,9 @@ export default function HomeScreen() {
                     {' · '}{selectedDayWorkout.label}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="rgba(0,0,0,0.3)" />
+                <TouchableOpacity onPress={() => setPickerVisible(true)} hitSlop={8}>
+                  <Ionicons name="create-outline" size={18} color="rgba(0,0,0,0.35)" />
+                </TouchableOpacity>
               </View>
               <Text style={styles.focusName}>{selectedDayWorkout.name}</Text>
               <View style={styles.focusMeta}>
@@ -130,15 +157,19 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
           ) : (
-            <View style={styles.restCard}>
-              <Text style={styles.restEmoji}>🛌</Text>
+            <TouchableOpacity
+              style={styles.restCard}
+              onPress={() => setPickerVisible(true)}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add-circle-outline" size={32} color={colors.blue} />
               <View>
                 <Text style={styles.restTitle}>
-                  {selectedDay === todayIndex ? 'Rest Day' : `${DAY_LABELS[selectedDay]} — Rest`}
+                  {selectedDay === todayIndex ? 'Log Today\'s Workout' : `Log ${DAY_LABELS[selectedDay]}'s Workout`}
                 </Text>
-                <Text style={styles.restSub}>Recovery is part of the program.</Text>
+                <Text style={styles.restSub}>Tap to choose Day A, B or C</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -175,6 +206,49 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Workout Picker Modal */}
+      <Modal
+        visible={pickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPickerVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setPickerVisible(false)}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>
+              {selectedDay === todayIndex ? "Log Today's Workout" : `Log ${DAY_LABELS[selectedDay]}'s Workout`}
+            </Text>
+            {days.map((day) => (
+              <TouchableOpacity
+                key={day.id}
+                style={[styles.pickerRow, { backgroundColor: cardMeta[day.id].bg }]}
+                onPress={() => logWorkout(selectedDay, day.id)}
+                activeOpacity={0.85}
+              >
+                <View>
+                  <Text style={styles.pickerLabel}>{day.label}</Text>
+                  <Text style={styles.pickerName}>{day.name}</Text>
+                </View>
+                <View style={[styles.tagPill, { backgroundColor: 'rgba(255,255,255,0.55)' }]}>
+                  <Text style={[styles.tagText, { color: cardMeta[day.id].tagColor }]}>
+                    {cardMeta[day.id].tag}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            {loggedWorkouts[selectedDay] && (
+              <TouchableOpacity
+                style={styles.clearBtn}
+                onPress={() => clearWorkout(selectedDay)}
+              >
+                <Text style={styles.clearText}>Clear this day</Text>
+              </TouchableOpacity>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -213,9 +287,12 @@ const styles = StyleSheet.create({
 
   logoBlock: { alignItems: 'center', paddingTop: 24, paddingBottom: 8 },
   logo: { width: 120, height: 120 },
+
   greetingBlock: { paddingHorizontal: 24, paddingBottom: 20 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
+  avatar: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: colors.blue },
 
   weekStrip: {
     flexDirection: 'row',
@@ -248,11 +325,7 @@ const styles = StyleSheet.create({
   },
 
   focusWrapper: { paddingHorizontal: 16, marginBottom: 28 },
-  focusCard: {
-    borderRadius: 20,
-    padding: 20,
-    gap: 10,
-  },
+  focusCard: { borderRadius: 20, padding: 20, gap: 10 },
   focusTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   focusPill: { borderRadius: 8, paddingVertical: 4, paddingHorizontal: 10 },
   focusPillText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
@@ -273,7 +346,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  restEmoji: { fontSize: 32 },
   restTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   restSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
@@ -296,4 +368,35 @@ const styles = StyleSheet.create({
   tagText: { fontSize: 12, fontWeight: '600' },
   exCount: { fontSize: 12, color: 'rgba(0,0,0,0.5)', fontWeight: '500' },
   chevronWrapper: { position: 'absolute', top: 18, right: 18 },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: colors.bg,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 12,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textMuted,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 16,
+    padding: 16,
+  },
+  pickerLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(0,0,0,0.4)', letterSpacing: 0.5, marginBottom: 2 },
+  pickerName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  clearBtn: { alignItems: 'center', paddingTop: 8 },
+  clearText: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
 });
