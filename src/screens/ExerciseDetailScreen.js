@@ -11,11 +11,12 @@ import {
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { t } from '../utils/i18n';
 
 const { width } = Dimensions.get('window');
 
 export default function ExerciseDetailScreen({ route, navigation }) {
-  const { exercise, group, day } = route.params;
+  const { exercise, group, day, currentUser } = route.params;
   const videoRef = useRef(null);
 
   return (
@@ -59,7 +60,7 @@ export default function ExerciseDetailScreen({ route, navigation }) {
         ) : (
           <View style={styles.videoPlaceholder}>
             <Ionicons name="videocam-off-outline" size={28} color={colors.textMuted} />
-            <Text style={styles.placeholderText}>No video available</Text>
+            <Text style={styles.placeholderText}>{t(currentUser, 'No video available', 'No hay video disponible')}</Text>
           </View>
         )}
 
@@ -75,12 +76,12 @@ export default function ExerciseDetailScreen({ route, navigation }) {
 
           {exercise.tip && (
             <View style={styles.tipCard}>
-              <Text style={styles.tipLabel}>TIP</Text>
+              <Text style={styles.tipLabel}>{t(currentUser, 'TIP', 'TIP')}</Text>
               <Text style={styles.tipText}>{exercise.tip}</Text>
             </View>
           )}
 
-          <Text style={styles.howLabel}>HOW TO DO IT</Text>
+          <Text style={styles.howLabel}>{t(currentUser, 'HOW TO DO IT', 'COMO HACERLO')}</Text>
           <Text style={styles.explanation}>{exercise.explanation}</Text>
         </View>
       </ScrollView>

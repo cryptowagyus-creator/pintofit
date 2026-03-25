@@ -9,9 +9,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { t } from '../utils/i18n';
 
 export default function WorkoutDetailScreen({ route, navigation }) {
-  const { day } = route.params;
+  const { day, currentUser } = route.params;
   const totalEx = day.groups.reduce((s, g) => s + g.exercises.length, 0);
 
   return (
@@ -24,13 +25,13 @@ export default function WorkoutDetailScreen({ route, navigation }) {
         {/* Back */}
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={18} color={colors.blue} />
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t(currentUser, 'Back', 'Atras')}</Text>
         </TouchableOpacity>
 
         {/* Title */}
         <View style={styles.header}>
           <Text style={styles.title}>{day.name}</Text>
-          <Text style={styles.sub}>{totalEx} exercises</Text>
+          <Text style={styles.sub}>{t(currentUser, `${totalEx} exercises`, `${totalEx} ejercicios`)}</Text>
         </View>
 
         {/* Groups */}
@@ -45,7 +46,7 @@ export default function WorkoutDetailScreen({ route, navigation }) {
                     <TouchableOpacity
                       style={styles.row}
                       onPress={() =>
-                        navigation.navigate('ExerciseDetail', { exercise: ex, group, day })
+                        navigation.navigate('ExerciseDetail', { exercise: ex, group, day, currentUser })
                       }
                       activeOpacity={0.6}
                     >

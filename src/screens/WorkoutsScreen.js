@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
+import { t } from '../utils/i18n';
 
 const cardMeta = {
   chest_triceps: {
@@ -31,7 +32,7 @@ const cardMeta = {
   },
 };
 
-export default function WorkoutsScreen() {
+export default function WorkoutsScreen({ currentUser }) {
   const navigation = useNavigation();
   const days = workoutProgram.days;
 
@@ -45,8 +46,8 @@ export default function WorkoutsScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Workouts</Text>
-          <Text style={styles.subtitle}>Pintico's Program</Text>
+          <Text style={styles.title}>{t(currentUser, 'Workouts', 'Entrenamientos')}</Text>
+          <Text style={styles.subtitle}>{t(currentUser, "PintoFit's Program", 'Programa de PintoFit')}</Text>
         </View>
 
         {/* Cards */}
@@ -57,7 +58,7 @@ export default function WorkoutsScreen() {
             return (
               <TouchableOpacity
                 key={day.id}
-                onPress={() => navigation.navigate('WorkoutDetail', { day })}
+                onPress={() => navigation.navigate('WorkoutDetail', { day, currentUser })}
                 activeOpacity={0.85}
                 style={[styles.card, { backgroundColor: meta.bg }]}
               >
@@ -73,7 +74,7 @@ export default function WorkoutsScreen() {
                     <View style={[styles.tagPill, { backgroundColor: 'rgba(255,255,255,0.55)' }]}>
                       <Text style={[styles.tagText, { color: meta.tagColor }]}>{meta.tag}</Text>
                     </View>
-                    <Text style={styles.exCount}>{totalEx} exercises</Text>
+                    <Text style={styles.exCount}>{t(currentUser, `${totalEx} exercises`, `${totalEx} ejercicios`)}</Text>
                   </View>
                 </View>
 

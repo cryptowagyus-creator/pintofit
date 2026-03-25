@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { FAMILY_AVATARS } from '../data/family';
 import { buildLeaderboardRows, getWeeklyPoints } from '../utils/points';
+import { t } from '../utils/i18n';
 
 export default function LeaderboardScreen({ currentUser }) {
   const [rows, setRows] = useState([]);
@@ -34,8 +35,8 @@ export default function LeaderboardScreen({ currentUser }) {
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Leaderboard</Text>
-          <Text style={styles.subtitle}>Weekly points reset Sundays at 10:00 PM.</Text>
+          <Text style={styles.title}>{t(currentUser, 'Leaderboard', 'Clasificacion')}</Text>
+          <Text style={styles.subtitle}>{t(currentUser, 'Weekly points reset Sundays at 10:00 PM.', 'Los puntos semanales se reinician los domingos a las 10:00 PM.')}</Text>
         </View>
 
         <View style={styles.list}>
@@ -55,7 +56,7 @@ export default function LeaderboardScreen({ currentUser }) {
                 )}
                 <View style={styles.rowMain}>
                   <Text style={styles.name}>{row.name}</Text>
-                  {isCurrentUser ? <Text style={styles.youTag}>You</Text> : null}
+                  {isCurrentUser ? <Text style={styles.youTag}>{t(currentUser, 'You', 'Tu')}</Text> : null}
                 </View>
                 <View style={styles.pointsPill}>
                   <Ionicons name="trophy" size={14} color={colors.green} />

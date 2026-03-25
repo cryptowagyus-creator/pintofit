@@ -79,7 +79,9 @@ function Tabs({ activeUser, onLogout }) {
       <Tab.Screen name="Home">
         {() => <HomeScreen currentUser={activeUser} onLogout={onLogout} />}
       </Tab.Screen>
-      <Tab.Screen name="Workouts" component={WorkoutsScreen} />
+      <Tab.Screen name="Workouts">
+        {() => <WorkoutsScreen currentUser={activeUser} />}
+      </Tab.Screen>
       <Tab.Screen name="CalorieEstimator">
         {() => <CalorieEstimatorScreen currentUser={activeUser} />}
       </Tab.Screen>

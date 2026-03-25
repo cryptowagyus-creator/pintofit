@@ -19,6 +19,7 @@ import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 import { FAMILY_AVATARS, getUserKey } from '../data/family';
 import { awardWeeklyPoints, getUserWeeklyPoints, getWeeklyPoints } from '../utils/points';
+import { isSpanishUser, t } from '../utils/i18n';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -37,6 +38,7 @@ function getGreeting() {
 }
 
 export default function HomeScreen({ currentUser, onLogout }) {
+  const spanish = isSpanishUser(currentUser);
   const navigation = useNavigation();
   const todayIndex = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
@@ -191,14 +193,14 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 </TouchableOpacity>
               </View>
               <View>
-                <Text style={styles.greeting}>{getGreeting()}</Text>
+                <Text style={styles.greeting}>{spanish ? getGreeting().replace('Good morning,', 'Buenos dias,').replace('Good afternoon,', 'Buenas tardes,').replace('Good evening,', 'Buenas noches,') : getGreeting()}</Text>
                 <Text style={styles.greetingName}>{currentUser}</Text>
               </View>
             </View>
             <View style={styles.pointsBadge}>
               <Ionicons name="trophy" size={18} color={colors.green} />
               <Text style={styles.pointsCount}>{weeklyPoints}</Text>
-              <Text style={styles.pointsLabel}>week</Text>
+              <Text style={styles.pointsLabel}>{t(currentUser, 'week', 'semana')}</Text>
             </View>
           </View>
         </View>
@@ -237,7 +239,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
           {selectedDayWorkout ? (
             <TouchableOpacity
               style={[styles.focusCard, { backgroundColor: cardMeta[selectedDayWorkout.id].bg }]}
-              onPress={() => navigation.navigate('WorkoutDetail', { day: selectedDayWorkout })}
+              onPress={() => navigation.navigate('WorkoutDetail', { day: selectedDayWorkout, currentUser })}
               activeOpacity={0.85}
             >
               <View style={styles.focusTop}>
@@ -268,7 +270,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
               <View style={styles.focusTop}>
                 <View style={[styles.focusPill, styles.customWorkoutPill]}>
                   <Text style={[styles.focusPillText, styles.customWorkoutPillText]}>
-                    {selectedDay === todayIndex ? "Today's Workout" : DAY_LABELS[selectedDay]}
+                    {selectedDay === todayIndex ? t(currentUser, "Today's Workout", 'Entrenamiento de hoy') : DAY_LABELS[selectedDay]}
                     {' · '}Custom
                   </Text>
                 </View>
@@ -277,7 +279,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 </TouchableOpacity>
               </View>
               <Text style={[styles.focusName, styles.customWorkoutName]}>{selectedCustomWorkout.name}</Text>
-              <Text style={styles.customWorkoutSub}>Custom workout logged for this day.</Text>
+              <Text style={styles.customWorkoutSub}>{t(currentUser, 'Custom workout logged for this day.', 'Entrenamiento personalizado guardado para este dia.')}</Text>
             </View>
           ) : (
             <TouchableOpacity
@@ -288,9 +290,9 @@ export default function HomeScreen({ currentUser, onLogout }) {
               <Ionicons name="add-circle-outline" size={32} color={colors.blue} />
               <View>
                 <Text style={styles.restTitle}>
-                  {selectedDay === todayIndex ? 'Log Today\'s Workout' : `Log ${DAY_LABELS[selectedDay]}'s Workout`}
+                  {selectedDay === todayIndex ? t(currentUser, "Log Today's Workout", 'Registrar entrenamiento de hoy') : t(currentUser, `Log ${DAY_LABELS[selectedDay]}'s Workout`, `Registrar entrenamiento de ${DAY_LABELS[selectedDay]}`)}
                 </Text>
-                <Text style={styles.restSub}>Tap to choose Day A, B, C, or custom workout</Text>
+                <Text style={styles.restSub}>{t(currentUser, 'Tap to choose Day A, B, C, or custom workout', 'Toca para elegir Dia A, B, C o entrenamiento personalizado')}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -299,20 +301,20 @@ export default function HomeScreen({ currentUser, onLogout }) {
         <View style={styles.calorieSection}>
           <View style={styles.calorieHeader}>
             <View>
-              <Text style={styles.sectionTitleCompact}>Calories</Text>
+              <Text style={styles.sectionTitleCompact}>{t(currentUser, 'Calories', 'Calorias')}</Text>
               <Text style={styles.calorieSubtitle}>
-                {selectedDay === todayIndex ? 'Today' : DAY_LABELS[selectedDay]}
+                {selectedDay === todayIndex ? t(currentUser, 'Today', 'Hoy') : DAY_LABELS[selectedDay]}
               </Text>
             </View>
             <TouchableOpacity style={styles.mealAddBtn} onPress={() => setMealModalVisible(true)} activeOpacity={0.85}>
               <Ionicons name="add" size={18} color={colors.white} />
-              <Text style={styles.mealAddText}>Log meal</Text>
+              <Text style={styles.mealAddText}>{t(currentUser, 'Log meal', 'Registrar comida')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.calorieCard}>
             <Text style={styles.calorieCount}>{totalCalories}</Text>
-            <Text style={styles.calorieLabel}>calories logged</Text>
+            <Text style={styles.calorieLabel}>{t(currentUser, 'calories logged', 'calorias registradas')}</Text>
 
             {selectedDayMeals.length ? (
               <View style={styles.mealList}>
@@ -324,7 +326,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
                     </View>
                     <View style={styles.mealRowMeta}>
                       <Text style={styles.mealCaloriesText}>
-                        {meal.calories != null ? `${meal.calories} cal` : 'No calories'}
+                        {meal.calories != null ? `${meal.calories} cal` : t(currentUser, 'No calories', 'Sin calorias')}
                       </Text>
                       <TouchableOpacity onPress={() => removeMeal(meal.id)} hitSlop={8}>
                         <Ionicons name="close" size={18} color={colors.textSecondary} />
@@ -334,20 +336,20 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 ))}
               </View>
             ) : (
-              <Text style={styles.emptyMeals}>No meals logged for this day yet.</Text>
+              <Text style={styles.emptyMeals}>{t(currentUser, 'No meals logged for this day yet.', 'Todavia no hay comidas registradas para este dia.')}</Text>
             )}
           </View>
         </View>
 
         {/* Full Plan */}
-        <Text style={styles.sectionTitle}>Your Plan</Text>
+        <Text style={styles.sectionTitle}>{t(currentUser, 'Your Plan', 'Tu plan')}</Text>
         <View style={styles.cardsContainer}>
           {days[0] && (
             <WorkoutCard
               day={days[0]}
               meta={cardMeta[days[0].id]}
               tall
-              onPress={() => navigation.navigate('WorkoutDetail', { day: days[0] })}
+              onPress={() => navigation.navigate('WorkoutDetail', { day: days[0], currentUser })}
             />
           )}
           {(days[1] || days[2]) && (
@@ -357,7 +359,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
                   day={days[1]}
                   meta={cardMeta[days[1].id]}
                   half
-                  onPress={() => navigation.navigate('WorkoutDetail', { day: days[1] })}
+                  onPress={() => navigation.navigate('WorkoutDetail', { day: days[1], currentUser })}
                 />
               )}
               {days[2] && (
@@ -365,7 +367,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
                   day={days[2]}
                   meta={cardMeta[days[2].id]}
                   half
-                  onPress={() => navigation.navigate('WorkoutDetail', { day: days[2] })}
+                  onPress={() => navigation.navigate('WorkoutDetail', { day: days[2], currentUser })}
                 />
               )}
             </View>
@@ -384,7 +386,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
           <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>
-              {selectedDay === todayIndex ? "Log Today's Workout" : `Log ${DAY_LABELS[selectedDay]}'s Workout`}
+              {selectedDay === todayIndex ? t(currentUser, "Log Today's Workout", 'Registrar entrenamiento de hoy') : t(currentUser, `Log ${DAY_LABELS[selectedDay]}'s Workout`, `Registrar entrenamiento de ${DAY_LABELS[selectedDay]}`)}
             </Text>
             {days.map((day) => (
               <TouchableOpacity
@@ -405,11 +407,11 @@ export default function HomeScreen({ currentUser, onLogout }) {
               </TouchableOpacity>
             ))}
             <View style={styles.customWorkoutBox}>
-              <Text style={styles.customWorkoutLabel}>Custom Workout</Text>
+              <Text style={styles.customWorkoutLabel}>{t(currentUser, 'Custom Workout', 'Entrenamiento personalizado')}</Text>
               <TextInput
                 value={customWorkoutName}
                 onChangeText={setCustomWorkoutName}
-                placeholder="What did you work on?"
+                placeholder={t(currentUser, 'What did you work on?', 'Que trabajaste?')}
                 placeholderTextColor={colors.textMuted}
                 style={styles.input}
               />
@@ -418,7 +420,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 onPress={() => logCustomWorkout(selectedDay)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.saveMealText}>Save custom workout</Text>
+                <Text style={styles.saveMealText}>{t(currentUser, 'Save custom workout', 'Guardar entrenamiento personalizado')}</Text>
               </TouchableOpacity>
             </View>
             {loggedWorkouts[selectedDay] && (
@@ -426,7 +428,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
                 style={styles.clearBtn}
                 onPress={() => clearWorkout(selectedDay)}
               >
-                <Text style={styles.clearText}>Clear this day</Text>
+                <Text style={styles.clearText}>{t(currentUser, 'Clear this day', 'Borrar este dia')}</Text>
               </TouchableOpacity>
             )}
           </Pressable>
@@ -443,7 +445,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
           <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>
-              {selectedDay === todayIndex ? "Log Today's Meal" : `Log ${DAY_LABELS[selectedDay]}'s Meal`}
+              {selectedDay === todayIndex ? t(currentUser, "Log Today's Meal", 'Registrar comida de hoy') : t(currentUser, `Log ${DAY_LABELS[selectedDay]}'s Meal`, `Registrar comida de ${DAY_LABELS[selectedDay]}`)}
             </Text>
 
             <View style={styles.mealTypeRow}>
@@ -467,21 +469,21 @@ export default function HomeScreen({ currentUser, onLogout }) {
             <TextInput
               value={mealName}
               onChangeText={setMealName}
-              placeholder="Food name"
+                placeholder={t(currentUser, 'Food name', 'Nombre de la comida')}
               placeholderTextColor={colors.textMuted}
               style={styles.input}
             />
             <TextInput
               value={mealCalories}
               onChangeText={setMealCalories}
-              placeholder="Calories (optional)"
+                placeholder={t(currentUser, 'Calories (optional)', 'Calorias (opcional)')}
               placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
               style={styles.input}
             />
 
             <TouchableOpacity style={styles.saveMealBtn} onPress={addMeal} activeOpacity={0.85}>
-              <Text style={styles.saveMealText}>Save meal</Text>
+              <Text style={styles.saveMealText}>{t(currentUser, 'Save meal', 'Guardar comida')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>

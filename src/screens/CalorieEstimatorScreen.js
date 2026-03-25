@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { t } from '../utils/i18n';
 
 const ANTHROPIC_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_KEY;
 
@@ -31,9 +32,22 @@ export default function CalorieEstimatorScreen({ currentUser }) {
   const userKey = (currentUser || 'guest').trim().toLowerCase().replace(/\s+/g, '_');
   const mealStorageKey = `pintofit_meals_${userKey}`;
 
-  const getMimeType = (uri) => {
-    const ext = uri?.split('?')[0].split('.').pop()?.toLowerCase();
-    const map = { png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+  const getMimeType = (asset) => {
+    if (asset?.mimeType && asset.mimeType.startsWith('image/')) {
+      return asset.mimeType;
+    }
+
+    const ext = asset?.uri?.split('?')[0].split('.').pop()?.toLowerCase();
+    const map = {
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      heic: 'image/heic',
+      heif: 'image/heif',
+    };
+
     return map[ext] || 'image/jpeg';
   };
 
@@ -47,9 +61,10 @@ export default function CalorieEstimatorScreen({ currentUser }) {
       quality: 0.7,
     });
     if (!res.canceled && res.assets?.[0]) {
-      setImage(res.assets[0].uri);
-      setImageBase64(res.assets[0].base64);
-      setImageMimeType(getMimeType(res.assets[0].uri));
+      const asset = res.assets[0];
+      setImage(asset.uri);
+      setImageBase64(asset.base64);
+      setImageMimeType(getMimeType(asset));
     }
   };
 
@@ -64,9 +79,10 @@ export default function CalorieEstimatorScreen({ currentUser }) {
     }
     const res = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 });
     if (!res.canceled && res.assets?.[0]) {
-      setImage(res.assets[0].uri);
-      setImageBase64(res.assets[0].base64);
-      setImageMimeType(getMimeType(res.assets[0].uri));
+      const asset = res.assets[0];
+      setImage(asset.uri);
+      setImageBase64(asset.base64);
+      setImageMimeType(getMimeType(asset));
     }
   };
 
@@ -150,7 +166,7 @@ export default function CalorieEstimatorScreen({ currentUser }) {
     };
 
     await AsyncStorage.setItem(mealStorageKey, JSON.stringify(updated));
-    setLogMessage(`Logged ${entry.name} for today.`);
+      setLogMessage(t(currentUser, `Logged ${entry.name} for today.`, `${entry.name} fue registrado para hoy.`));
   };
 
   const reset = () => {
@@ -171,24 +187,24 @@ export default function CalorieEstimatorScreen({ currentUser }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Calorie Estimator</Text>
-          <Text style={styles.sub}>Upload a meal photo, get one calorie number, and log it for today.</Text>
+          <Text style={styles.title}>{t(currentUser, 'Calorie Estimator', 'Estimador de calorias')}</Text>
+          <Text style={styles.sub}>{t(currentUser, 'Upload a meal photo, get one calorie number, and log it for today.', 'Sube una foto de comida, recibe un numero de calorias y registralo para hoy.')}</Text>
         </View>
 
         {!image ? (
           <View style={styles.uploadCard}>
             <Ionicons name="image-outline" size={36} color={colors.textMuted} />
-            <Text style={styles.uploadTitle}>Select a photo</Text>
-            <Text style={styles.uploadSub}>The estimator returns one calorie number only.</Text>
+            <Text style={styles.uploadTitle}>{t(currentUser, 'Select a photo', 'Selecciona una foto')}</Text>
+            <Text style={styles.uploadSub}>{t(currentUser, 'The estimator returns one calorie number only.', 'El estimador devuelve solo un numero de calorias.')}</Text>
             <View style={styles.uploadBtns}>
               <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
                 <Ionicons name="images-outline" size={17} color={colors.blue} />
-                <Text style={[styles.uploadBtnText, { color: colors.blue }]}>Gallery</Text>
+                <Text style={[styles.uploadBtnText, { color: colors.blue }]}>{t(currentUser, 'Gallery', 'Galeria')}</Text>
               </TouchableOpacity>
               {Platform.OS !== 'web' && (
                 <TouchableOpacity style={[styles.uploadBtn, styles.uploadBtnSecondary]} onPress={takePhoto}>
                   <Ionicons name="camera-outline" size={17} color={colors.text} />
-                  <Text style={styles.uploadBtnText}>Camera</Text>
+                  <Text style={styles.uploadBtnText}>{t(currentUser, 'Camera', 'Camara')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -199,7 +215,7 @@ export default function CalorieEstimatorScreen({ currentUser }) {
               <Image source={{ uri: image }} style={styles.preview} resizeMode="cover" />
               <TouchableOpacity style={styles.removeBtn} onPress={reset}>
                 <Ionicons name="close-circle-outline" size={22} color={colors.textSecondary} />
-                <Text style={styles.removeBtnText}>Remove</Text>
+                <Text style={styles.removeBtnText}>{t(currentUser, 'Remove', 'Quitar')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -215,7 +231,7 @@ export default function CalorieEstimatorScreen({ currentUser }) {
                   <Ionicons name="sparkles-outline" size={16} color={colors.white} />
                 )}
                 <Text style={styles.analyzeBtnText}>
-                  {loading ? 'Analyzing...' : 'Estimate Calories'}
+                  {loading ? t(currentUser, 'Analyzing...', 'Analizando...') : t(currentUser, 'Estimate Calories', 'Estimar calorias')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -232,22 +248,22 @@ export default function CalorieEstimatorScreen({ currentUser }) {
         {result != null && (
           <View style={styles.resultCard}>
             <View style={styles.resultHeader}>
-              <Text style={styles.resultLabel}>CALORIES</Text>
+              <Text style={styles.resultLabel}>{t(currentUser, 'CALORIES', 'CALORIAS')}</Text>
               <TouchableOpacity onPress={reset}>
-                <Text style={styles.newPhoto}>New photo</Text>
+                <Text style={styles.newPhoto}>{t(currentUser, 'New photo', 'Nueva foto')}</Text>
               </TouchableOpacity>
             </View>
             <Text style={styles.resultNumber}>{result}</Text>
-            <Text style={styles.resultUnit}>estimated calories</Text>
+            <Text style={styles.resultUnit}>{t(currentUser, 'estimated calories', 'calorias estimadas')}</Text>
             <TextInput
               value={mealName}
               onChangeText={setMealName}
-              placeholder="Meal name"
+              placeholder={t(currentUser, 'Meal name', 'Nombre de la comida')}
               placeholderTextColor={colors.textMuted}
               style={styles.input}
             />
             <TouchableOpacity style={styles.logMealBtn} onPress={logMeal} activeOpacity={0.85}>
-              <Text style={styles.logMealBtnText}>Log meal for today</Text>
+              <Text style={styles.logMealBtnText}>{t(currentUser, 'Log meal for today', 'Registrar comida para hoy')}</Text>
             </TouchableOpacity>
             {logMessage ? <Text style={styles.logMessage}>{logMessage}</Text> : null}
           </View>
