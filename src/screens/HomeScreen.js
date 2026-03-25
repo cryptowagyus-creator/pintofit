@@ -12,6 +12,7 @@ import {
   Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
@@ -19,6 +20,7 @@ import { workoutProgram } from '../data/workouts';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const STORAGE_KEY = 'pintofit_logged_workouts';
+const AVATAR_KEY = 'pintofit_avatar_uri';
 
 const cardMeta = {
   chest_triceps:  { bg: colors.yellowCard,   tag: 'Push', tagColor: '#B8860B' },
@@ -39,6 +41,7 @@ export default function HomeScreen() {
   const [selectedDay, setSelectedDay] = useState(todayIndex);
   const [loggedWorkouts, setLoggedWorkouts] = useState({});
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [avatarUri, setAvatarUri] = useState(null);
 
   const days = workoutProgram.days;
 
@@ -46,7 +49,26 @@ export default function HomeScreen() {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (raw) setLoggedWorkouts(JSON.parse(raw));
     });
+    AsyncStorage.getItem(AVATAR_KEY).then((uri) => {
+      if (uri) setAvatarUri(uri);
+    });
   }, []);
+
+  async function pickAvatar() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      setAvatarUri(uri);
+      await AsyncStorage.setItem(AVATAR_KEY, uri);
+    }
+  }
 
   async function logWorkout(dayIndex, workoutId) {
     const updated = { ...loggedWorkouts, [dayIndex]: workoutId };
@@ -88,9 +110,18 @@ export default function HomeScreen() {
               <Text style={styles.greeting}>{getGreeting()}</Text>
               <Text style={styles.greetingName}>Pintico</Text>
             </View>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={28} color="#fff" />
-            </View>
+            <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={styles.avatarWrapper}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={28} color="#fff" />
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={11} color="#fff" />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -290,7 +321,16 @@ const styles = StyleSheet.create({
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
-  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
+  avatarWrapper: { position: 'relative', width: 56, height: 56 },
+  avatarImg: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: colors.blue },
+  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: colors.text,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.bg,
+  },
 
   weekStrip: {
     flexDirection: 'row',
