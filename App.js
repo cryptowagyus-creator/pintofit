@@ -30,7 +30,7 @@ const FAMILY_USERS = [
   'Alejo',
   'Jeremy',
   'Eliana',
-  'Oornaldo',
+  'Orlando',
 ];
 
 function resolveFamilyUser(name) {
@@ -142,7 +142,7 @@ export default function App() {
             </Stack.Screen>
           ) : (
             <Stack.Screen name="Login">
-              {() => <LoginScreen onLogin={handleLogin} allowedUsers={FAMILY_USERS} />}
+              {() => <LoginScreen onLogin={handleLogin} />}
             </Stack.Screen>
           )}
           <Stack.Screen name="WorkoutDetail" component={WorkoutDetailScreen} />

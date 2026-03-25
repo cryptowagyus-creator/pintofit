@@ -12,13 +12,24 @@ import {
   Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const FAMILY_AVATARS = {
+  alejo: require('../../assets/avatars/alejo.png'),
+  eliana: require('../../assets/avatars/eliana.png'),
+  jeremy: require('../../assets/avatars/jeremy.png'),
+  lisette: require('../../assets/avatars/lisette.png'),
+  luis: require('../../assets/avatars/luis.png'),
+  mafe: require('../../assets/avatars/mafe.png'),
+  orlando: require('../../assets/avatars/orlando.png'),
+  raul: require('../../assets/avatars/raul.png'),
+  rosalina: require('../../assets/avatars/rosalina.png'),
+  samuel: require('../../assets/avatars/sam.png'),
+};
 
 const cardMeta = {
   chest_triceps:  { bg: colors.yellowCard,   tag: 'Push', tagColor: '#B8860B' },
@@ -33,45 +44,24 @@ function getGreeting() {
   return 'Good evening,';
 }
 
-export default function HomeScreen({ currentUser, onLogout }) {
+export default function HomeScreen({ currentUser }) {
   const navigation = useNavigation();
   const todayIndex = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
   const [loggedWorkouts, setLoggedWorkouts] = useState({});
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [avatarUri, setAvatarUri] = useState(null);
 
   const days = workoutProgram.days;
   const userKey = (currentUser || 'guest').trim().toLowerCase().replace(/\s+/g, '_');
   const storageKey = `pintofit_logged_workouts_${userKey}`;
-  const avatarKey = `pintofit_avatar_uri_${userKey}`;
+  const defaultAvatarSource = FAMILY_AVATARS[userKey] || null;
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey).then((raw) => {
       if (raw) setLoggedWorkouts(JSON.parse(raw));
       else setLoggedWorkouts({});
     });
-    AsyncStorage.getItem(avatarKey).then((uri) => {
-      if (uri) setAvatarUri(uri);
-      else setAvatarUri(null);
-    });
-  }, [avatarKey, storageKey]);
-
-  async function pickAvatar() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setAvatarUri(uri);
-      await AsyncStorage.setItem(avatarKey, uri);
-    }
-  }
+  }, [storageKey]);
 
   async function logWorkout(dayIndex, workoutId) {
     const updated = { ...loggedWorkouts, [dayIndex]: workoutId };
@@ -108,29 +98,20 @@ export default function HomeScreen({ currentUser, onLogout }) {
 
         {/* Greeting */}
         <View style={styles.greetingBlock}>
-          <View style={styles.greetingHeader}>
-            <View style={styles.greetingRow}>
-              <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={styles.avatarWrapper}>
-                {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={36} color="#fff" />
-                  </View>
-                )}
-                <View style={styles.avatarEditBadge}>
-                  <Ionicons name="camera" size={13} color="#fff" />
+          <View style={styles.greetingRow}>
+            <View style={styles.avatarWrapper}>
+              {defaultAvatarSource ? (
+                <Image source={defaultAvatarSource} style={styles.avatarImg} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={36} color="#fff" />
                 </View>
-              </TouchableOpacity>
-              <View>
-                <Text style={styles.greeting}>{getGreeting()}</Text>
-                <Text style={styles.greetingName}>{currentUser}</Text>
-              </View>
+              )}
             </View>
-            <TouchableOpacity onPress={onLogout} style={styles.logoutBtn} activeOpacity={0.8}>
-              <Ionicons name="log-out-outline" size={18} color={colors.text} />
-              <Text style={styles.logoutText}>Switch user</Text>
-            </TouchableOpacity>
+            <View>
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.greetingName}>{currentUser}</Text>
+            </View>
           </View>
         </View>
 
@@ -327,31 +308,12 @@ const styles = StyleSheet.create({
   logo: { width: 120, height: 120 },
 
   greetingBlock: { paddingHorizontal: 24, paddingBottom: 20 },
-  greetingHeader: { gap: 14 },
   greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 16 },
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
   avatarWrapper: { position: 'relative', width: 73, height: 73 },
   avatarImg: { width: 73, height: 73, borderRadius: 36.5, borderWidth: 2, borderColor: colors.blue },
   avatarPlaceholder: { width: 73, height: 73, borderRadius: 36.5, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
-  avatarEditBadge: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: colors.text,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.bg,
-  },
-  logoutBtn: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.card,
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  logoutText: { fontSize: 14, fontWeight: '600', color: colors.text },
 
   weekStrip: {
     flexDirection: 'row',

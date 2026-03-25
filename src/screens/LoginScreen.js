@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { colors } from '../theme/colors';
 
-export default function LoginScreen({ onLogin, allowedUsers }) {
+export default function LoginScreen({ onLogin }) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
 
@@ -21,7 +21,7 @@ export default function LoginScreen({ onLogin, allowedUsers }) {
       setError('');
       return;
     }
-    setError('Name not found. Use one of the family names below.');
+    setError('Name not found.');
   }
 
   return (
@@ -51,8 +51,6 @@ export default function LoginScreen({ onLogin, allowedUsers }) {
           </TouchableOpacity>
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
-        <Text style={styles.listTitle}>Allowed users</Text>
-        <Text style={styles.userList}>{allowedUsers.join(' • ')}</Text>
       </View>
     </SafeAreaView>
   );
@@ -101,13 +99,4 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   error: { marginTop: 12, color: colors.red, fontSize: 14, fontWeight: '500' },
-  listTitle: { marginTop: 24, fontSize: 14, fontWeight: '700', color: colors.textSecondary },
-  userList: {
-    marginTop: 10,
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 22,
-    color: colors.text,
-    maxWidth: 320,
-  },
 });
