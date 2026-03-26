@@ -11,6 +11,7 @@ export const FAMILY_USERS = [
   'Jeremy',
   'Eliana',
   'Orlando',
+  'Arias',
 ];
 
 export function getUserKey(name) {
@@ -34,4 +35,5 @@ export const FAMILY_AVATARS = {
   raul: require('../../assets/avatars/raul.png'),
   rosalina: require('../../assets/avatars/rosalina.png'),
   samuel: require('../../assets/avatars/sam.png'),
+  arias: require('../../assets/avatars/arias.png'),
 };
