@@ -16,7 +16,8 @@ import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseDetailScreen from './src/screens/ExerciseDetailScreen';
 import CalorieEstimatorScreen from './src/screens/CalorieEstimatorScreen';
 import { colors } from './src/theme/colors';
-import { FAMILY_USERS, resolveFamilyUser } from './src/data/family';
+import { resolveFamilyUser } from './src/data/family';
+import { MealsProvider } from './src/context/MealsContext';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -125,6 +126,7 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <MealsProvider>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: colors.bg } }}>
           {activeUser ? (
@@ -140,6 +142,7 @@ export default function App() {
           <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      </MealsProvider>
     </GestureHandlerRootView>
   );
 }

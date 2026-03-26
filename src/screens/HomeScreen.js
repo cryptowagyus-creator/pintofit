@@ -21,7 +21,12 @@ import { FAMILY_AVATARS, getUserKey } from '../data/family';
 import { awardWeeklyPoints, getUserWeeklyPoints, getWeeklyPoints } from '../utils/points';
 import { isSpanishUser, t } from '../utils/i18n';
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Use device locale so Spanish users get proper names (e.g. "mié." not "casarse")
+// Oct 3 2021 was a Sunday, so index 0=Sun through 6=Sat
+const DAY_LABELS = [...Array(7)].map((_, i) => {
+  const d = new Date(2021, 9, 3 + i);
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(d);
+});
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
 const cardMeta = {
@@ -40,6 +45,7 @@ function getGreeting() {
 export default function HomeScreen({ currentUser, onLogout }) {
   const spanish = isSpanishUser(currentUser);
   const navigation = useNavigation();
+  const { todaysMeals } = useMeals();
   const todayIndex = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
   const [loggedWorkouts, setLoggedWorkouts] = useState({});
@@ -664,6 +670,20 @@ const styles = StyleSheet.create({
   restSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
 
   sectionTitle: { fontSize: 20, fontWeight: '700', color: colors.text, paddingHorizontal: 24, marginBottom: 14, letterSpacing: -0.3 },
+
+  mealsContainer: { paddingHorizontal: 16, gap: 10, marginBottom: 28 },
+  mealCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  mealThumb: { width: '100%', height: 140 },
+  mealText: { fontSize: 13, color: colors.text, lineHeight: 20, padding: 14 },
 
   cardsContainer: { paddingHorizontal: 16, gap: 12 },
   rowCards: { flexDirection: 'row', gap: 12 },

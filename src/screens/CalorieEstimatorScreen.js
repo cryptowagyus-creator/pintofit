@@ -166,7 +166,7 @@ export default function CalorieEstimatorScreen({ currentUser }) {
     };
 
     await AsyncStorage.setItem(mealStorageKey, JSON.stringify(updated));
-      setLogMessage(t(currentUser, `Logged ${entry.name} for today.`, `${entry.name} fue registrado para hoy.`));
+    setLogMessage(t(currentUser, `Logged ${entry.name} for today.`, `${entry.name} fue registrado para hoy.`));
   };
 
   const reset = () => {
