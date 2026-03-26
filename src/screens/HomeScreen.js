@@ -45,7 +45,6 @@ function getGreeting() {
 export default function HomeScreen({ currentUser, onLogout }) {
   const spanish = isSpanishUser(currentUser);
   const navigation = useNavigation();
-  const { todaysMeals } = useMeals();
   const todayIndex = new Date().getDay();
   const [selectedDay, setSelectedDay] = useState(todayIndex);
   const [loggedWorkouts, setLoggedWorkouts] = useState({});
