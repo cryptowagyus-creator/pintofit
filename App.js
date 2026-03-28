@@ -15,6 +15,7 @@ import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseDetailScreen from './src/screens/ExerciseDetailScreen';
 import CalorieEstimatorScreen from './src/screens/CalorieEstimatorScreen';
+import VoiceCalorieTrackerScreen from './src/screens/VoiceCalorieTrackerScreen';
 import { colors } from './src/theme/colors';
 import { resolveFamilyUser } from './src/data/family';
 import { MealsProvider } from './src/context/MealsContext';
@@ -29,7 +30,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
       <View style={tabStyles.pill}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
-          const icons = { Home: 'home', Workouts: 'grid', CalorieEstimator: 'scan', Leaderboard: 'trophy' };
+          const icons = { Home: 'home', Workouts: 'grid', CalorieEstimator: 'scan', VoiceTracker: 'mic', Leaderboard: 'trophy' };
           const iconName = focused ? icons[route.name] : `${icons[route.name]}-outline`;
           return (
             <TouchableOpacity
@@ -61,7 +62,7 @@ const tabStyles = StyleSheet.create({
     borderRadius: 40,
     paddingVertical: 16,
     paddingHorizontal: 36,
-    gap: 44,
+    gap: 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
@@ -85,6 +86,9 @@ function Tabs({ activeUser, onLogout }) {
       </Tab.Screen>
       <Tab.Screen name="CalorieEstimator">
         {() => <CalorieEstimatorScreen currentUser={activeUser} />}
+      </Tab.Screen>
+      <Tab.Screen name="VoiceTracker">
+        {() => <VoiceCalorieTrackerScreen currentUser={activeUser} />}
       </Tab.Screen>
       <Tab.Screen name="Leaderboard">
         {() => <LeaderboardScreen currentUser={activeUser} />}
