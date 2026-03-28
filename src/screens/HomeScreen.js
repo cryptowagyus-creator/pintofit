@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -77,10 +78,15 @@ export default function HomeScreen({ currentUser, onLogout }) {
     getWeeklyPoints().then((state) => {
       setWeeklyPoints(getUserWeeklyPoints(state.scores, currentUser));
     });
-    AsyncStorage.getItem(`${CUSTOM_AVATAR_KEY_PREFIX}${userKey}`).then((uri) => {
-      if (uri) setCustomAvatarUri(uri);
-    });
   }, [mealStorageKey, storageKey, userKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem(`${CUSTOM_AVATAR_KEY_PREFIX}${userKey}`).then((uri) => {
+        setCustomAvatarUri(uri || null);
+      });
+    }, [userKey])
+  );
 
   const avatarSource = customAvatarUri ? { uri: customAvatarUri } : defaultAvatarSource;
 
