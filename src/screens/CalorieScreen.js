@@ -238,17 +238,28 @@ const ph = StyleSheet.create({
   logMsg: { fontSize: 14, color: colors.green, fontWeight: '600' },
 });
 
-// ─── Voice tracker ────────────────────────────────────────────────────────────
+// ─── Voice tracker (Cooking Buddy v2) ────────────────────────────────────────
 
 function VoiceTracker({ currentUser }) {
-  const [recordings, setRecordings] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [currentTranscript, setCurrentTranscript] = useState('');
-  const [loading, setLoading] = useState(false);
+  const userKey = getUserKey(currentUser);
+  const storageKey = `pintofit_voice_log_${userKey}`;
+
+  const [sessionActive, setSessionActive] = useState(false);
+  const [entries, setEntries] = useState([]);
+  const [liveText, setLiveText] = useState('');
+  const [reconnecting, setReconnecting] = useState(false);
   const [calorieResult, setCalorieResult] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [supported, setSupported] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyData, setHistoryData] = useState([]);
+
   const recognitionRef = useRef(null);
+  const sessionActiveRef = useRef(false);
+  const sessionIdRef = useRef(null);
+  const finalBufferRef = useRef('');
+  const restartTimerRef = useRef(null);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -258,43 +269,175 @@ function VoiceTracker({ currentUser }) {
     }
   }, []);
 
-  const startRecording = () => {
+  useEffect(() => { loadHistory(); }, []);
+
+  const loadHistory = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(storageKey);
+      setHistoryData(raw ? JSON.parse(raw) : []);
+    } catch (_) {}
+  };
+
+  const saveEntryToStorage = async (sessionId, entry) => {
+    try {
+      const raw = await AsyncStorage.getItem(storageKey);
+      const sessions = raw ? JSON.parse(raw) : [];
+      const idx = sessions.findIndex((s) => s.sessionId === sessionId);
+      if (idx >= 0) {
+        sessions[idx].entries.push(entry);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(sessions));
+      }
+    } catch (_) {}
+  };
+
+  const saveCalorieToStorage = async (sessionId, calories) => {
+    try {
+      const raw = await AsyncStorage.getItem(storageKey);
+      const sessions = raw ? JSON.parse(raw) : [];
+      const idx = sessions.findIndex((s) => s.sessionId === sessionId);
+      if (idx >= 0) {
+        sessions[idx].calorieResult = calories;
+        await AsyncStorage.setItem(storageKey, JSON.stringify(sessions));
+      }
+    } catch (_) {}
+  };
+
+  const addEntry = (text) => {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId || !sessionActiveRef.current) return;
+    const entry = { id: Date.now(), text, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+    setEntries((prev) => [...prev, entry]);
+    setCalorieResult(null);
+    saveEntryToStorage(sessionId, entry);
+  };
+
+  const startRecognitionLoop = () => {
+    if (!sessionActiveRef.current || recognitionRef.current) return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
-    setError(null); setCurrentTranscript('');
+
+    finalBufferRef.current = '';
     const rec = new SR();
-    rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = true;
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.continuous = false;
+
     rec.onresult = (e) => {
-      let interim = '', final = '';
+      let final = '', interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const txt = e.results[i][0].transcript;
         e.results[i].isFinal ? (final += txt) : (interim += txt);
       }
-      setCurrentTranscript((prev) => {
-        const base = (prev.replace(/\s*\[.*\]$/, '') + ' ' + final).trim();
-        return interim ? `${base} [${interim}]` : base;
-      });
+      if (final) finalBufferRef.current = (finalBufferRef.current + ' ' + final).trim();
+      setLiveText((finalBufferRef.current + (interim ? ' ' + interim : '')).trim());
+      setReconnecting(false);
     };
-    rec.onerror = (e) => { setError(`Mic error: ${e.error}`); setIsRecording(false); };
+
+    rec.onerror = (e) => {
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
+      setError(`Mic: ${e.error}`);
+      setTimeout(() => setError(null), 3000);
+    };
+
+    rec.onend = () => {
+      recognitionRef.current = null;
+      setLiveText('');
+      const buffer = finalBufferRef.current.trim();
+      finalBufferRef.current = '';
+
+      if (buffer && sessionActiveRef.current) {
+        const wakeMatch = buffer.match(/(?:hey\s+)?cooking\s+buddy[,.]?\s*/i);
+        if (wakeMatch) {
+          const afterWake = buffer.slice(wakeMatch.index + wakeMatch[0].length).trim();
+          if (afterWake) addEntry(afterWake);
+        }
+      }
+
+      if (sessionActiveRef.current) {
+        setReconnecting(true);
+        restartTimerRef.current = setTimeout(() => {
+          setReconnecting(false);
+          startRecognitionLoop();
+        }, 350);
+      }
+    };
+
     recognitionRef.current = rec;
-    rec.start();
-    setIsRecording(true);
+    try { rec.start(); } catch (_) { recognitionRef.current = null; }
   };
 
-  const stopRecording = () => {
-    if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; }
-    setIsRecording(false);
-    const raw = currentTranscript.replace(/\s*\[.*\]$/, '').trim();
-    if (raw) setRecordings((prev) => [...prev, { id: Date.now(), text: raw, timestamp: new Date().toLocaleTimeString() }]);
-    setCurrentTranscript('');
+  const startSession = async () => {
+    const id = `session_${Date.now()}`;
+    sessionIdRef.current = id;
+    sessionActiveRef.current = true;
+    setSessionActive(true);
+    setEntries([]);
+    setCalorieResult(null);
+    setError(null);
+    setLiveText('');
+
+    try {
+      const raw = await AsyncStorage.getItem(storageKey);
+      const sessions = raw ? JSON.parse(raw) : [];
+      sessions.push({
+        sessionId: id,
+        date: new Date().toLocaleDateString(),
+        startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        entries: [],
+        calorieResult: null,
+      });
+      await AsyncStorage.setItem(storageKey, JSON.stringify(sessions));
+    } catch (_) {}
+
+    startRecognitionLoop();
   };
+
+  const endSession = () => {
+    sessionActiveRef.current = false;
+    setSessionActive(false);
+    if (restartTimerRef.current) { clearTimeout(restartTimerRef.current); restartTimerRef.current = null; }
+    if (recognitionRef.current) { try { recognitionRef.current.abort(); } catch (_) {} recognitionRef.current = null; }
+    setLiveText('');
+    setReconnecting(false);
+    loadHistory();
+  };
+
+  // App-switching recovery
+  useEffect(() => {
+    if (!sessionActive || Platform.OS !== 'web') return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && sessionActiveRef.current) {
+        if (recognitionRef.current) { try { recognitionRef.current.abort(); } catch (_) {} recognitionRef.current = null; }
+        setReconnecting(true);
+        setTimeout(() => startRecognitionLoop(), 500);
+      }
+    };
+    const handleFocus = () => {
+      if (sessionActiveRef.current && !recognitionRef.current) startRecognitionLoop();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [sessionActive]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      sessionActiveRef.current = false;
+      if (recognitionRef.current) { try { recognitionRef.current.abort(); } catch (_) {} recognitionRef.current = null; }
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    };
+  }, []);
 
   const analyzeCalories = async () => {
-    if (!recordings.length) return;
+    if (!entries.length) return;
     if (!ANTHROPIC_KEY) { setError('API key not set. Add EXPO_PUBLIC_ANTHROPIC_KEY.'); return; }
     setLoading(true); setError(null); setCalorieResult(null);
-    const allText = recordings.map((r, i) => `Item ${i + 1}: ${r.text}`).join('\n');
-    const prompt = `I recorded these ingredients:\n\n${allText}\n\nWhat is the total calorie count? Respond with only one integer number. No words, ranges, or explanations.`;
+    const sid = sessionIdRef.current;
+    const prompt = `I recorded these food items:\n\n${entries.map((r, i) => `Item ${i + 1}: ${r.text}`).join('\n')}\n\nWhat is the total calorie count? Respond with only one integer number. No words, ranges, or explanations.`;
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -306,13 +449,86 @@ function VoiceTracker({ currentUser }) {
       const parsed = parseInt((data.content?.[0]?.text || '').replace(/[^\d]/g, ''), 10);
       if (Number.isNaN(parsed)) throw new Error('Could not parse a calorie number.');
       setCalorieResult(parsed);
+      if (sid) { await saveCalorieToStorage(sid, parsed); loadHistory(); }
     } catch (e) { setError(e.message); } finally { setLoading(false); }
   };
 
-  const liveText = currentTranscript.replace(/\s*\[.*\]$/, '').trim();
-  const interimMatch = currentTranscript.match(/\[([^\]]+)\]$/);
-  const interimText = interimMatch ? interimMatch[1] : '';
+  const deleteHistoryEntry = async (sessionId, entryId) => {
+    try {
+      const raw = await AsyncStorage.getItem(storageKey);
+      const sessions = raw ? JSON.parse(raw) : [];
+      const idx = sessions.findIndex((s) => s.sessionId === sessionId);
+      if (idx >= 0) {
+        sessions[idx].entries = sessions[idx].entries.filter((e) => e.id !== entryId);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(sessions));
+        setHistoryData([...sessions]);
+      }
+    } catch (_) {}
+  };
 
+  const deleteHistorySession = async (sessionId) => {
+    try {
+      const raw = await AsyncStorage.getItem(storageKey);
+      const sessions = raw ? JSON.parse(raw) : [];
+      const updated = sessions.filter((s) => s.sessionId !== sessionId);
+      await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+      setHistoryData(updated);
+    } catch (_) {}
+  };
+
+  // ─── History panel ──────────────────────────────────────────────────────────
+  if (showHistory) {
+    return (
+      <View style={vc.root}>
+        <View style={vc.historyHeader}>
+          <TouchableOpacity onPress={() => setShowHistory(false)} style={vc.backBtn}>
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
+            <Text style={vc.backBtnText}>Back</Text>
+          </TouchableOpacity>
+          <Text style={vc.historyTitle}>Voice History</Text>
+          <View style={{ width: 60 }} />
+        </View>
+
+        {historyData.length === 0 ? (
+          <View style={vc.empty}>
+            <Ionicons name="time-outline" size={48} color={colors.textMuted} />
+            <Text style={vc.emptyTitle}>No history yet</Text>
+            <Text style={vc.emptySub}>Sessions will appear here after you cook with Cooking Buddy.</Text>
+          </View>
+        ) : (
+          [...historyData].reverse().map((session) => (
+            <View key={session.sessionId} style={vc.historySession}>
+              <View style={vc.historySessionHead}>
+                <View style={{ flex: 1 }}>
+                  <Text style={vc.historySessionDate}>{session.date}</Text>
+                  <Text style={vc.historySessionMeta}>{session.startTime} · {session.entries.length} item{session.entries.length !== 1 ? 's' : ''}</Text>
+                </View>
+                {session.calorieResult != null && (
+                  <Text style={vc.historyCalories}>{session.calorieResult} cal</Text>
+                )}
+                <TouchableOpacity onPress={() => deleteHistorySession(session.sessionId)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              {session.entries.map((entry) => (
+                <View key={entry.id} style={vc.historyEntry}>
+                  <View style={vc.historyEntryBody}>
+                    <Text style={vc.historyEntryText}>{entry.text}</Text>
+                    <Text style={vc.historyEntryTime}>{entry.timestamp}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => deleteHistoryEntry(session.sessionId, entry.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ))
+        )}
+      </View>
+    );
+  }
+
+  // ─── Main session view ──────────────────────────────────────────────────────
   return (
     <View style={vc.root}>
       {!supported && (
@@ -322,38 +538,59 @@ function VoiceTracker({ currentUser }) {
         </View>
       )}
 
-      <View style={vc.micSection}>
-        <TouchableOpacity style={[vc.micBtn, isRecording && vc.micBtnActive]} onPress={isRecording ? stopRecording : startRecording} disabled={!supported} activeOpacity={0.8}>
-          <Ionicons name={isRecording ? 'stop' : 'mic'} size={40} color={isRecording ? colors.red : colors.white} />
-        </TouchableOpacity>
-        <Text style={vc.micLabel}>
-          {isRecording ? 'Tap to stop' : recordings.length === 0 ? 'Tap to start recording' : 'Tap to add another item'}
+      <View style={vc.topRow}>
+        <Text style={vc.wakeHint} numberOfLines={1}>
+          {sessionActive ? 'Say "cooking buddy, [food]" to log' : 'Start a session to begin'}
         </Text>
+        <TouchableOpacity onPress={() => { loadHistory(); setShowHistory(true); }} style={vc.historyBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="time-outline" size={22} color={colors.textSecondary} />
+        </TouchableOpacity>
       </View>
 
-      {isRecording && (
+      <View style={vc.sessionRow}>
+        {!sessionActive ? (
+          <TouchableOpacity style={[vc.startBtn, !supported && { opacity: 0.4 }]} onPress={startSession} disabled={!supported} activeOpacity={0.8}>
+            <Ionicons name="mic" size={20} color={colors.white} />
+            <Text style={vc.startBtnText}>Start Session</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={vc.endBtn} onPress={endSession} activeOpacity={0.8}>
+            <Ionicons name="stop-circle-outline" size={20} color={colors.red} />
+            <Text style={vc.endBtnText}>End Session</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {sessionActive && (
         <View style={vc.liveCard}>
-          <View style={vc.liveIndicator}><View style={vc.liveDot} /><Text style={vc.liveLabel}>RECORDING</Text></View>
-          <Text style={vc.liveText}>
-            {liveText || 'Listening...'}
-            {interimText ? <Text style={vc.interimText}> {interimText}</Text> : null}
+          {reconnecting ? (
+            <View style={vc.liveIndicator}>
+              <ActivityIndicator size="small" color={colors.textMuted} />
+              <Text style={vc.reconnectText}>Reconnecting…</Text>
+            </View>
+          ) : (
+            <View style={vc.liveIndicator}>
+              <View style={vc.liveDot} />
+              <Text style={vc.liveLabel}>LISTENING</Text>
+            </View>
+          )}
+          <Text style={liveText ? vc.liveText : vc.liveMuted}>
+            {liveText || 'Waiting for "cooking buddy"…'}
           </Text>
         </View>
       )}
 
-      {recordings.length > 0 && (
+      {entries.length > 0 && (
         <View style={vc.list}>
-          <View style={vc.listHeader}>
-            <Text style={vc.listTitle}>Session ({recordings.length} item{recordings.length !== 1 ? 's' : ''})</Text>
-            <TouchableOpacity onPress={() => { setRecordings([]); setCalorieResult(null); setError(null); }}>
-              <Text style={vc.clearText}>Clear all</Text>
-            </TouchableOpacity>
-          </View>
-          {recordings.map((r, i) => (
+          <Text style={vc.listTitle}>Session ({entries.length} item{entries.length !== 1 ? 's' : ''})</Text>
+          {entries.map((r, i) => (
             <View key={r.id} style={vc.card}>
               <View style={vc.idx}><Text style={vc.idxText}>{i + 1}</Text></View>
-              <View style={vc.cardBody}><Text style={vc.cardText}>{r.text}</Text><Text style={vc.cardTime}>{r.timestamp}</Text></View>
-              <TouchableOpacity onPress={() => { setRecordings((p) => p.filter((x) => x.id !== r.id)); setCalorieResult(null); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <View style={vc.cardBody}>
+                <Text style={vc.cardText}>{r.text}</Text>
+                <Text style={vc.cardTime}>{r.timestamp}</Text>
+              </View>
+              <TouchableOpacity onPress={() => { setEntries((p) => p.filter((x) => x.id !== r.id)); setCalorieResult(null); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close" size={16} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -368,10 +605,10 @@ function VoiceTracker({ currentUser }) {
         </View>
       )}
 
-      {recordings.length > 0 && (
+      {entries.length > 0 && (
         <View style={vc.analyzeSection}>
           {calorieResult == null ? (
-            <TouchableOpacity style={[vc.analyzeBtn, (loading || isRecording) && { opacity: 0.5 }]} onPress={analyzeCalories} disabled={loading || isRecording} activeOpacity={0.85}>
+            <TouchableOpacity style={[vc.analyzeBtn, loading && { opacity: 0.5 }]} onPress={analyzeCalories} disabled={loading} activeOpacity={0.85}>
               {loading ? <ActivityIndicator color={colors.white} size="small" /> : <Ionicons name="sparkles-outline" size={18} color={colors.white} />}
               <Text style={vc.analyzeBtnText}>{loading ? 'Calculating...' : 'Analyze Meal Calories'}</Text>
             </TouchableOpacity>
@@ -380,7 +617,7 @@ function VoiceTracker({ currentUser }) {
               <Text style={vc.resultLabel}>TOTAL CALORIES</Text>
               <Text style={vc.resultNumber}>{calorieResult}</Text>
               <Text style={vc.resultUnit}>estimated calories for this meal</Text>
-              <TouchableOpacity style={vc.reBtn} onPress={() => { setCalorieResult(null); setError(null); }}>
+              <TouchableOpacity style={vc.reBtn} onPress={() => setCalorieResult(null)}>
                 <Text style={vc.reBtnText}>Re-analyze</Text>
               </TouchableOpacity>
             </View>
@@ -388,11 +625,11 @@ function VoiceTracker({ currentUser }) {
         </View>
       )}
 
-      {recordings.length === 0 && !isRecording && supported && (
+      {!sessionActive && entries.length === 0 && supported && (
         <View style={vc.empty}>
           <Ionicons name="mic-outline" size={48} color={colors.textMuted} />
-          <Text style={vc.emptyTitle}>No recordings yet</Text>
-          <Text style={vc.emptySub}>{'Tap the mic and say:\n"100 grams of chicken breast"\n"200 grams of brown rice"'}</Text>
+          <Text style={vc.emptyTitle}>Cooking Buddy</Text>
+          <Text style={vc.emptySub}>{'Start a session, then say:\n"cooking buddy, 100g chicken"\n"hey cooking buddy, cup of rice"'}</Text>
         </View>
       )}
     </View>
@@ -403,28 +640,37 @@ const vc = StyleSheet.create({
   root: { gap: 12 },
   warnCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginHorizontal: 16, backgroundColor: '#FFF8EE', borderRadius: 14, padding: 16, borderLeftWidth: 3, borderLeftColor: '#FF9500' },
   warnText: { flex: 1, color: '#7A4800', fontSize: 14, lineHeight: 20 },
-  micSection: { alignItems: 'center', paddingVertical: 20 },
-  micBtn: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 10 },
-  micBtnActive: { backgroundColor: '#FFF0EE', borderWidth: 2, borderColor: colors.red },
-  micLabel: { marginTop: 12, fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
+  // Top row
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  wakeHint: { flex: 1, fontSize: 13, color: colors.textSecondary, fontStyle: 'italic' },
+  historyBtn: { padding: 4 },
+  // Session buttons
+  sessionRow: { paddingHorizontal: 16 },
+  startBtn: { backgroundColor: colors.text, borderRadius: 16, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  startBtnText: { fontSize: 16, fontWeight: '700', color: colors.white },
+  endBtn: { backgroundColor: '#FFF0EE', borderWidth: 1.5, borderColor: colors.red, borderRadius: 16, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  endBtnText: { fontSize: 16, fontWeight: '600', color: colors.red },
+  // Live card
   liveCard: { marginHorizontal: 16, backgroundColor: '#F4F4F4', borderRadius: 16, padding: 16, gap: 8 },
   liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.red },
   liveLabel: { fontSize: 11, fontWeight: '700', color: colors.red, letterSpacing: 0.8 },
+  reconnectText: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
   liveText: { fontSize: 16, color: colors.text, lineHeight: 24 },
-  interimText: { color: colors.textMuted, fontStyle: 'italic' },
+  liveMuted: { fontSize: 15, color: colors.textMuted, fontStyle: 'italic', lineHeight: 24 },
+  // Entry list
   list: { paddingHorizontal: 16, gap: 8 },
-  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   listTitle: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, letterSpacing: 0.4 },
-  clearText: { fontSize: 13, color: colors.textMuted },
   card: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.card, borderRadius: 14, padding: 14, gap: 12, borderWidth: 1, borderColor: colors.border },
   idx: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
   idxText: { fontSize: 13, fontWeight: '700', color: colors.white },
   cardBody: { flex: 1, gap: 4 },
   cardText: { fontSize: 15, color: colors.text, lineHeight: 22 },
   cardTime: { fontSize: 12, color: colors.textMuted },
+  // Error
   errorCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginHorizontal: 16, backgroundColor: colors.card, borderRadius: 14, padding: 16, borderLeftWidth: 3, borderLeftColor: colors.red },
   errorText: { flex: 1, color: colors.red, fontSize: 14, lineHeight: 20 },
+  // Analyze
   analyzeSection: { paddingHorizontal: 16 },
   analyzeBtn: { backgroundColor: colors.text, borderRadius: 16, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   analyzeBtnText: { fontSize: 16, fontWeight: '700', color: colors.white },
@@ -434,9 +680,24 @@ const vc = StyleSheet.create({
   resultUnit: { fontSize: 14, color: colors.textSecondary },
   reBtn: { marginTop: 10, paddingVertical: 8, paddingHorizontal: 20 },
   reBtnText: { fontSize: 14, color: colors.textMuted, fontWeight: '500' },
+  // Empty state
   empty: { alignItems: 'center', paddingHorizontal: 48, paddingTop: 16, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: colors.textSecondary },
   emptySub: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 22 },
+  // History panel
+  historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 60 },
+  backBtnText: { fontSize: 16, color: colors.text, fontWeight: '500' },
+  historyTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
+  historySession: { marginHorizontal: 16, backgroundColor: colors.card, borderRadius: 16, padding: 16, gap: 10, borderWidth: 1, borderColor: colors.border },
+  historySessionHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  historySessionDate: { fontSize: 15, fontWeight: '600', color: colors.text },
+  historySessionMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  historyCalories: { fontSize: 14, fontWeight: '700', color: colors.textSecondary, marginRight: 8 },
+  historyEntry: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  historyEntryBody: { flex: 1 },
+  historyEntryText: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  historyEntryTime: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
 });
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
