@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 import { FAMILY_AVATARS, getUserKey } from '../data/family';
+import { CUSTOM_AVATAR_KEY_PREFIX } from './ProfileSettingsScreen';
 import { awardWeeklyPoints, getUserWeeklyPoints, getWeeklyPoints } from '../utils/points';
 import { isSpanishUser, t } from '../utils/i18n';
 
@@ -62,6 +63,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
   const storageKey = `pintofit_logged_workouts_${userKey}`;
   const mealStorageKey = `pintofit_meals_${userKey}`;
   const defaultAvatarSource = FAMILY_AVATARS[userKey] || null;
+  const [customAvatarUri, setCustomAvatarUri] = useState(null);
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey).then((raw) => {
@@ -75,7 +77,12 @@ export default function HomeScreen({ currentUser, onLogout }) {
     getWeeklyPoints().then((state) => {
       setWeeklyPoints(getUserWeeklyPoints(state.scores, currentUser));
     });
-  }, [mealStorageKey, storageKey]);
+    AsyncStorage.getItem(`${CUSTOM_AVATAR_KEY_PREFIX}${userKey}`).then((uri) => {
+      if (uri) setCustomAvatarUri(uri);
+    });
+  }, [mealStorageKey, storageKey, userKey]);
+
+  const avatarSource = customAvatarUri ? { uri: customAvatarUri } : defaultAvatarSource;
 
   async function logWorkout(dayIndex, workoutId) {
     const shouldAwardPoints = !loggedWorkouts[dayIndex];
@@ -186,8 +193,8 @@ export default function HomeScreen({ currentUser, onLogout }) {
           <View style={styles.greetingHeaderRow}>
             <View style={styles.greetingRow}>
               <View style={styles.avatarWrapper}>
-                {defaultAvatarSource ? (
-                  <Image source={defaultAvatarSource} style={styles.avatarImg} />
+                {avatarSource ? (
+                  <Image source={avatarSource} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Ionicons name="person" size={36} color="#fff" />

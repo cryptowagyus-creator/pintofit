@@ -14,8 +14,8 @@ import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseDetailScreen from './src/screens/ExerciseDetailScreen';
-import CalorieEstimatorScreen from './src/screens/CalorieEstimatorScreen';
-import VoiceCalorieTrackerScreen from './src/screens/VoiceCalorieTrackerScreen';
+import CalorieScreen from './src/screens/CalorieScreen';
+import ProfileSettingsScreen from './src/screens/ProfileSettingsScreen';
 import { colors } from './src/theme/colors';
 import { resolveFamilyUser } from './src/data/family';
 import { MealsProvider } from './src/context/MealsContext';
@@ -30,7 +30,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
       <View style={tabStyles.pill}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
-          const icons = { Home: 'home', Workouts: 'grid', CalorieEstimator: 'scan', VoiceTracker: 'mic', Leaderboard: 'trophy' };
+          const icons = { Home: 'home', Workouts: 'grid', Calories: 'scan', Leaderboard: 'trophy', Profile: 'person' };
           const iconName = focused ? icons[route.name] : `${icons[route.name]}-outline`;
           return (
             <TouchableOpacity
@@ -84,14 +84,14 @@ function Tabs({ activeUser, onLogout }) {
       <Tab.Screen name="Workouts">
         {() => <WorkoutsScreen currentUser={activeUser} />}
       </Tab.Screen>
-      <Tab.Screen name="CalorieEstimator">
-        {() => <CalorieEstimatorScreen currentUser={activeUser} />}
-      </Tab.Screen>
-      <Tab.Screen name="VoiceTracker">
-        {() => <VoiceCalorieTrackerScreen currentUser={activeUser} />}
+      <Tab.Screen name="Calories">
+        {() => <CalorieScreen currentUser={activeUser} />}
       </Tab.Screen>
       <Tab.Screen name="Leaderboard">
         {() => <LeaderboardScreen currentUser={activeUser} />}
+      </Tab.Screen>
+      <Tab.Screen name="Profile">
+        {() => <ProfileSettingsScreen currentUser={activeUser} onLogout={onLogout} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
