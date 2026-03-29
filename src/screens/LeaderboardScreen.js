@@ -22,7 +22,15 @@ export default function LeaderboardScreen({ currentUser }) {
     useCallback(() => {
       let active = true;
       getWeeklyPoints().then((state) => {
-        if (active) setRows(buildLeaderboardRows(state.scores));
+        if (active) {
+          let leaderboardRows = buildLeaderboardRows(state.scores);
+          if ((currentUser || '').trim().toLowerCase() === 'luke') {
+            leaderboardRows = leaderboardRows.filter(
+              (r) => r.name === 'Luke' || r.name === 'Juan'
+            );
+          }
+          setRows(leaderboardRows);
+        }
       });
       return () => {
         active = false;
