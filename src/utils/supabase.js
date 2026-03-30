@@ -7,20 +7,17 @@ export function getAvatarUrl(userKey) {
 }
 
 export async function uploadAvatar(userKey, localUri) {
-  const formData = new FormData();
-  formData.append('file', {
-    uri: localUri,
-    type: 'image/jpeg',
-    name: userKey,
-  });
+  const fileRes = await fetch(localUri);
+  const blob = await fileRes.blob();
 
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${userKey}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       'x-upsert': 'true',
+      'Content-Type': blob.type || 'image/jpeg',
     },
-    body: formData,
+    body: blob,
   });
 
   if (!res.ok) {
