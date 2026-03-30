@@ -10,26 +10,19 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { FAMILY_AVATARS, getUserKey } from '../data/family';
-
-export const CUSTOM_AVATAR_KEY_PREFIX = 'pintofit_custom_avatar_';
+import { getAvatarUrl, uploadAvatar } from '../utils/supabase';
 
 export default function ProfileSettingsScreen({ currentUser, onLogout }) {
   const userKey = getUserKey(currentUser);
   const defaultAvatar = FAMILY_AVATARS[userKey] || null;
 
-  const [customAvatarUri, setCustomAvatarUri] = useState(null);
+  const [avatarUri, setAvatarUri] = useState(() => getAvatarUrl(userKey));
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [saveMsg, setSaveMsg] = useState(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem(`${CUSTOM_AVATAR_KEY_PREFIX}${userKey}`).then((uri) => {
-      if (uri) setCustomAvatarUri(uri);
-    });
-  }, [userKey]);
 
   const pickNewPhoto = async () => {
     setSaveMsg(null);
@@ -47,23 +40,21 @@ export default function ProfileSettingsScreen({ currentUser, onLogout }) {
         quality: 0.8,
       });
       if (!res.canceled && res.assets?.[0]) {
-        const uri = res.assets[0].uri;
-        await AsyncStorage.setItem(`${CUSTOM_AVATAR_KEY_PREFIX}${userKey}`, uri);
-        setCustomAvatarUri(uri);
+        await uploadAvatar(userKey, res.assets[0].uri);
+        setAvatarUri(`${getAvatarUrl(userKey)}?t=${Date.now()}`);
+        setAvatarFailed(false);
         setSaveMsg('Profile photo updated!');
       }
+    } catch (e) {
+      setSaveMsg('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
-  const removeCustomPhoto = async () => {
-    await AsyncStorage.removeItem(`${CUSTOM_AVATAR_KEY_PREFIX}${userKey}`);
-    setCustomAvatarUri(null);
-    setSaveMsg('Reverted to default photo.');
-  };
-
-  const avatarSource = customAvatarUri ? { uri: customAvatarUri } : defaultAvatar;
+  const avatarSource = !avatarFailed
+    ? { uri: avatarUri }
+    : defaultAvatar || null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -76,7 +67,7 @@ export default function ProfileSettingsScreen({ currentUser, onLogout }) {
         <View style={styles.avatarSection}>
           <View style={styles.avatarWrapper}>
             {avatarSource ? (
-              <Image source={avatarSource} style={styles.avatar} />
+              <Image source={avatarSource} style={styles.avatar} onError={() => setAvatarFailed(true)} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Ionicons name="person" size={52} color={colors.white} />
@@ -103,18 +94,6 @@ export default function ProfileSettingsScreen({ currentUser, onLogout }) {
               <Text style={styles.rowLabel}>Change profile photo</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </TouchableOpacity>
-            {customAvatarUri && (
-              <>
-                <View style={styles.divider} />
-                <TouchableOpacity style={styles.row} onPress={removeCustomPhoto} activeOpacity={0.7}>
-                  <View style={[styles.rowIcon, { backgroundColor: '#FFF0EE' }]}>
-                    <Ionicons name="trash-outline" size={20} color={colors.red} />
-                  </View>
-                  <Text style={[styles.rowLabel, { color: colors.red }]}>Remove custom photo</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              </>
-            )}
           </View>
           {saveMsg && (
             <Text style={[styles.saveMsg, saveMsg.includes('required') && { color: colors.red }]}>
