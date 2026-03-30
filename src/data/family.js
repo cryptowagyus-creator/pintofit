@@ -13,7 +13,15 @@ export const FAMILY_USERS = [
   'Orlando',
   'Arias',
   'Luke',
+  'Opium',
 ];
+
+// If a user is listed here, they only see the specified users on the leaderboard.
+// Users not listed here see everyone.
+export const LEADERBOARD_VISIBILITY = {
+  luke: ['Luke', 'Juan'],
+  opium: ['Juan'],
+};
 
 export function getUserKey(name) {
   return (name || 'guest').trim().toLowerCase().replace(/\s+/g, '_');

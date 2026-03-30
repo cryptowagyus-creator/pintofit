@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,14 +11,16 @@ import {
   Modal,
   Pressable,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { workoutProgram } from '../data/workouts';
 import { FAMILY_AVATARS, getUserKey } from '../data/family';
-import { CUSTOM_AVATAR_KEY_PREFIX } from './ProfileSettingsScreen';
+import { getAvatarUrl, uploadAvatar } from '../utils/supabase';
 import { awardWeeklyPoints, getUserWeeklyPoints, getWeeklyPoints } from '../utils/points';
 import { isSpanishUser, t } from '../utils/i18n';
 
@@ -58,13 +59,18 @@ export default function HomeScreen({ currentUser, onLogout }) {
   const [mealName, setMealName] = useState('');
   const [mealCalories, setMealCalories] = useState('');
   const [weeklyPoints, setWeeklyPoints] = useState(0);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [avatarTs, setAvatarTs] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const days = workoutProgram.days;
   const userKey = getUserKey(currentUser);
   const storageKey = `pintofit_logged_workouts_${userKey}`;
   const mealStorageKey = `pintofit_meals_${userKey}`;
   const defaultAvatarSource = FAMILY_AVATARS[userKey] || null;
-  const [customAvatarUri, setCustomAvatarUri] = useState(null);
+  const supabaseAvatarUri = avatarTs
+    ? `${getAvatarUrl(userKey)}?t=${avatarTs}`
+    : getAvatarUrl(userKey);
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey).then((raw) => {
@@ -78,17 +84,7 @@ export default function HomeScreen({ currentUser, onLogout }) {
     getWeeklyPoints().then((state) => {
       setWeeklyPoints(getUserWeeklyPoints(state.scores, currentUser));
     });
-  }, [mealStorageKey, storageKey, userKey]);
-
-  useFocusEffect(
-    useCallback(() => {
-      AsyncStorage.getItem(`${CUSTOM_AVATAR_KEY_PREFIX}${userKey}`).then((uri) => {
-        setCustomAvatarUri(uri || null);
-      });
-    }, [userKey])
-  );
-
-  const avatarSource = customAvatarUri ? { uri: customAvatarUri } : defaultAvatarSource;
+  }, [mealStorageKey, storageKey]);
 
   async function logWorkout(dayIndex, workoutId) {
     const shouldAwardPoints = !loggedWorkouts[dayIndex];
@@ -171,6 +167,28 @@ export default function HomeScreen({ currentUser, onLogout }) {
     await AsyncStorage.setItem(mealStorageKey, JSON.stringify(updated));
   }
 
+  async function pickAvatar() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    setUploading(true);
+    try {
+      await uploadAvatar(userKey, result.assets[0].uri);
+      setAvatarTs(Date.now());
+      setAvatarFailed(false);
+    } catch (e) {
+      console.error('Avatar upload failed:', e);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const selectedDayWorkoutId = loggedWorkouts[selectedDay];
   const selectedDayWorkout = typeof selectedDayWorkoutId === 'string'
     ? days.find((d) => d.id === selectedDayWorkoutId)
@@ -199,13 +217,26 @@ export default function HomeScreen({ currentUser, onLogout }) {
           <View style={styles.greetingHeaderRow}>
             <View style={styles.greetingRow}>
               <View style={styles.avatarWrapper}>
-                {avatarSource ? (
-                  <Image source={avatarSource} style={styles.avatarImg} />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={36} color="#fff" />
-                  </View>
-                )}
+                <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8}>
+                  {!avatarFailed ? (
+                    <Image
+                      source={{ uri: supabaseAvatarUri }}
+                      style={styles.avatarImg}
+                      onError={() => setAvatarFailed(true)}
+                    />
+                  ) : defaultAvatarSource ? (
+                    <Image source={defaultAvatarSource} style={styles.avatarImg} />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <Ionicons name="person" size={36} color="#fff" />
+                    </View>
+                  )}
+                  {uploading && (
+                    <View style={styles.avatarUploadOverlay}>
+                      <ActivityIndicator color="#fff" size="small" />
+                    </View>
+                  )}
+                </TouchableOpacity>
                 <TouchableOpacity onPress={onLogout} style={styles.logoutBadge} activeOpacity={0.85}>
                   <Ionicons name="log-out-outline" size={12} color="#fff" />
                 </TouchableOpacity>
@@ -551,6 +582,7 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 15, color: colors.textSecondary, fontWeight: '400' },
   greetingName: { fontSize: 28, fontWeight: '700', color: colors.text, letterSpacing: -0.5, marginTop: 2 },
   avatarWrapper: { position: 'relative', width: 73, height: 73 },
+  avatarUploadOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: 36.5, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   avatarImg: { width: 73, height: 73, borderRadius: 36.5, borderWidth: 2, borderColor: colors.blue },
   avatarPlaceholder: { width: 73, height: 73, borderRadius: 36.5, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
   logoutBadge: {

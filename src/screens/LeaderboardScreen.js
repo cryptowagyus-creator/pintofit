@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, memo } from 'react';
 import {
   View,
   Text,
@@ -11,31 +11,52 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-import { FAMILY_AVATARS } from '../data/family';
+import { FAMILY_AVATARS, LEADERBOARD_VISIBILITY, getUserKey } from '../data/family';
+import { getAvatarUrl } from '../utils/supabase';
 import { buildLeaderboardRows, getWeeklyPoints } from '../utils/points';
 import { t } from '../utils/i18n';
 
+const AvatarCell = memo(function AvatarCell({ userKey }) {
+  const [failed, setFailed] = useState(false);
+  const staticSource = FAMILY_AVATARS[userKey] || null;
+
+  if (!failed) {
+    return (
+      <Image
+        source={{ uri: getAvatarUrl(userKey) }}
+        style={styles.avatar}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  if (staticSource) {
+    return <Image source={staticSource} style={styles.avatar} />;
+  }
+  return (
+    <View style={styles.avatarPlaceholder}>
+      <Ionicons name="person" size={18} color="#fff" />
+    </View>
+  );
+});
+
 export default function LeaderboardScreen({ currentUser }) {
   const [rows, setRows] = useState([]);
+
+  const visibleNames = LEADERBOARD_VISIBILITY[getUserKey(currentUser)] || null;
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       getWeeklyPoints().then((state) => {
         if (active) {
-          let leaderboardRows = buildLeaderboardRows(state.scores);
-          if ((currentUser || '').trim().toLowerCase() === 'luke') {
-            leaderboardRows = leaderboardRows.filter(
-              (r) => r.name === 'Luke' || r.name === 'Juan'
-            );
-          }
-          setRows(leaderboardRows);
+          const allRows = buildLeaderboardRows(state.scores);
+          setRows(visibleNames ? allRows.filter((r) => visibleNames.includes(r.name)) : allRows);
         }
       });
       return () => {
         active = false;
       };
-    }, [])
+    }, [visibleNames])
   );
 
   return (
@@ -49,19 +70,12 @@ export default function LeaderboardScreen({ currentUser }) {
 
         <View style={styles.list}>
           {rows.map((row, index) => {
-            const avatarSource = FAMILY_AVATARS[row.userKey] || null;
             const isCurrentUser = row.name === currentUser;
 
             return (
               <View key={row.userKey} style={[styles.row, isCurrentUser && styles.currentRow]}>
                 <Text style={styles.rank}>{index + 1}</Text>
-                {avatarSource ? (
-                  <Image source={avatarSource} style={styles.avatar} />
-                ) : (
-                  <View style={styles.avatarPlaceholder}>
-                    <Ionicons name="person" size={18} color="#fff" />
-                  </View>
-                )}
+                <AvatarCell userKey={row.userKey} />
                 <View style={styles.rowMain}>
                   <Text style={styles.name}>{row.name}</Text>
                   {isCurrentUser ? <Text style={styles.youTag}>{t(currentUser, 'You', 'Tu')}</Text> : null}
